@@ -10,6 +10,10 @@
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
+# Configuração local com credenciais (não deve ir pro repositório)
+application.yml
+application.yaml
+
 # Package Files #
 *.jar
 *.war
