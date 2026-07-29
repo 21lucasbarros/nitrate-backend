@@ -6,8 +6,8 @@ import java.io.Serializable;
 import java.util.Objects;
 
 @Entity
-@Table(name = "tb_director")
-public class Director implements Serializable {
+@Table(name = "tb_actor")
+public class Actor implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
@@ -17,10 +17,10 @@ public class Director implements Serializable {
     @Column(nullable = false, unique = true)
     private String name;
 
-    public Director() {
+    public Actor() {
     }
 
-    public Director(String name) {
+    public Actor(String name) {
         this.name = name;
     }
 
@@ -43,8 +43,8 @@ public class Director implements Serializable {
     @Override
     public boolean equals(Object o) {
         if(this == o) return true;
-        if(!(o instanceof Director)) return false;
-        Director other = (Director) o;
+        if(!(o instanceof  Actor)) return false;
+        Actor other = (Actor) o;
         return Objects.equals(id, other.id);
     }
 
