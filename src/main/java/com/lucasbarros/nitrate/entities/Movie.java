@@ -39,6 +39,14 @@ public class Movie implements Serializable {
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MovieCast> cast = new ArrayList<>();
 
+    @Column(unique = true)
+    private Long tmdbId;
+
+    @Column(length = 1000)
+    private String overview;
+
+    private String posterPath;
+
     public Movie() {
     }
 
@@ -116,6 +124,30 @@ public class Movie implements Serializable {
 
     public int getEra() {
         return (releaseYear / 10) * 10;
+    }
+
+    public Long getTmdbId() {
+        return tmdbId;
+    }
+
+    public void setTmdbId(Long tmdbId) {
+        this.tmdbId = tmdbId;
+    }
+
+    public String getOverview() {
+        return overview;
+    }
+
+    public void setOverview(String overview) {
+        this.overview = overview;
+    }
+
+    public String getPosterPath() {
+        return posterPath;
+    }
+
+    public void setPosterPath(String posterPath) {
+        this.posterPath = posterPath;
     }
 
     public MovieCast findCastMember(String actorName) {
