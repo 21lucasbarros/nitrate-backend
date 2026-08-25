@@ -1,5 +1,6 @@
 package com.lucasbarros.nitrate.resources.exceptions;
 
+import com.lucasbarros.nitrate.services.exceptions.EmailJaCadastradoException;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -22,5 +23,16 @@ public class ResourceExceptionHandler {
         erro.setPath(request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(erro);
+    }
+
+    @ExceptionHandler(EmailJaCadastradoException.class)
+    public ResponseEntity<StandardError> emailJaCadastrado(EmailJaCadastradoException e, HttpServletRequest request) {
+        StandardError erro = new StandardError();
+        erro.setTimestamp(Instant.now());
+        erro.setStatus(HttpStatus.CONFLICT.value());
+        erro.setError("E-mail já cadastrado");
+        erro.setMessage(e.getMessage());
+        erro.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
     }
 }
