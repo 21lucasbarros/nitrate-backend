@@ -17,7 +17,7 @@ public class TmdbClient {
     }
 
     public TmdbPopularResponseDTO buscarFilmesPopulares(int pagina) {
-        return restClient().get()
+        TmdbPopularResponseDTO resposta = restClient().get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/movie/popular")
                         .queryParam("api_key", properties.getApiKey())
@@ -26,6 +26,7 @@ public class TmdbClient {
                         .build())
                 .retrieve()
                 .body(TmdbPopularResponseDTO.class);
+        return resposta;
     }
 
     public TmdbMovieDetailDTO buscarDetalhesComCreditos(Long tmdbId) {
