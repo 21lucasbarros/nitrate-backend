@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import javax.naming.AuthenticationException;
 import java.time.Instant;
 
 @ControllerAdvice
@@ -34,5 +35,16 @@ public class ResourceExceptionHandler {
         erro.setMessage(e.getMessage());
         erro.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<StandardError> authenticationFailed(AuthenticationException e, HttpServletRequest request) {
+        StandardError erro = new StandardError();
+        erro.setTimestamp(Instant.now());
+        erro.setStatus(HttpStatus.UNAUTHORIZED.value());
+        erro.setError("Falha na autenticação");
+        erro.setMessage("E-mail ou senha inválidos.");
+        erro.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erro);
     }
 }
