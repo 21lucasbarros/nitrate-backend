@@ -3,6 +3,7 @@ package com.lucasbarros.nitrate.resources;
 import com.lucasbarros.nitrate.dto.AuthResponseDTO;
 import com.lucasbarros.nitrate.dto.LoginRequestDTO;
 import com.lucasbarros.nitrate.dto.RegisterRequestDTO;
+import com.lucasbarros.nitrate.dto.UsernameAvailabilityDTO;
 import com.lucasbarros.nitrate.services.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -22,5 +23,10 @@ public class AuthResource {
     @PostMapping("/login")
     public AuthResponseDTO login(@RequestBody LoginRequestDTO request) {
         return authService.login(request);
+    }
+
+    @GetMapping("/check-username")
+    public UsernameAvailabilityDTO checkUsername(@RequestParam String username) {
+        return new UsernameAvailabilityDTO(authService.usernameDisponivel(username));
     }
 }
