@@ -1,6 +1,8 @@
 package com.lucasbarros.nitrate.resources.exceptions;
 
+import com.lucasbarros.nitrate.services.exceptions.ConflictException;
 import com.lucasbarros.nitrate.services.exceptions.EmailJaCadastradoException;
+import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import com.lucasbarros.nitrate.services.exceptions.UsernameJaCadastradoException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import javax.naming.AuthenticationException;
+import org.springframework.security.core.AuthenticationException;
 import java.time.Instant;
 
 @ControllerAdvice
@@ -56,6 +58,28 @@ public class ResourceExceptionHandler {
         erro.setTimestamp(Instant.now());
         erro.setStatus(HttpStatus.CONFLICT.value());
         erro.setError("Nome de usuário indisponível");
+        erro.setMessage(e.getMessage());
+        erro.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<StandardError> forbidden(ForbiddenException e, HttpServletRequest request) {
+        StandardError erro = new StandardError();
+        erro.setTimestamp(Instant.now());
+        erro.setStatus(HttpStatus.FORBIDDEN.value());
+        erro.setError("Acesso negado");
+        erro.setMessage(e.getMessage());
+        erro.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(erro);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<StandardError> conflict(ConflictException e, HttpServletRequest request) {
+        StandardError erro = new StandardError();
+        erro.setTimestamp(Instant.now());
+        erro.setStatus(HttpStatus.CONFLICT.value());
+        erro.setError("Conflito");
         erro.setMessage(e.getMessage());
         erro.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);

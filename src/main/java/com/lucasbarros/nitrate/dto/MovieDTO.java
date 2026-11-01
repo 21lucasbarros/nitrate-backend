@@ -17,6 +17,8 @@ public class MovieDTO implements Serializable {
     private String director;
     private String franchise;
     private List<String> genres = new ArrayList<>();
+    private String posterPath;
+    private String overview;
 
     public MovieDTO() {
     }
@@ -26,6 +28,8 @@ public class MovieDTO implements Serializable {
         title = entity.getTitle();
         releaseYear = entity.getReleaseYear();
         rating = entity.getRating();
+        posterPath = entity.getPosterPath();
+        overview = entity.getOverview();
 
         if(entity.getDirector() != null) {
             director = entity.getDirector().getName();
@@ -92,5 +96,21 @@ public class MovieDTO implements Serializable {
 
     public void setGenres(List<String> genres) {
         this.genres = genres;
+    }
+
+    public String getPosterPath() {
+        return posterPath;
+    }
+
+    public void setPosterPath(String posterPath) {
+        this.posterPath = posterPath;
+    }
+
+    public String getOverview() {
+        return overview;
+    }
+
+    public void setOverview(String overview) {
+        this.overview = overview;
     }
 }

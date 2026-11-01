@@ -48,7 +48,7 @@ public class AuthService {
         user = userRepository.save(user);
 
         String token = jwtService.gerarToken(new CustomUserDetails(user));
-        return new AuthResponseDTO(token, user.getName(), user.getEmail());
+        return new AuthResponseDTO(token, user.getName(), user.getUsername(), user.getEmail());
     }
 
     public AuthResponseDTO login(LoginRequestDTO request) {
@@ -60,7 +60,7 @@ public class AuthService {
                 .orElseThrow();
 
         String token = jwtService.gerarToken(new CustomUserDetails(user));
-        return new AuthResponseDTO(token, user.getName(), user.getEmail());
+        return new AuthResponseDTO(token, user.getName(), user.getUsername(), user.getEmail());
     }
 
     public boolean usernameDisponivel(String username) {
