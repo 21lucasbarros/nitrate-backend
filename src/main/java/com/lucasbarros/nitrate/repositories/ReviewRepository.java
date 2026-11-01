@@ -19,7 +19,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     long countByUserAndTextIsNotNull(User user);
     long countByUserAndLikedTrue(User user);
 
-    // filmes que alguém curtiu ou avaliou bem: as sementes do grafo
-    @Query("select distinct r.movie.id from Review r where r.liked = true or r.rating >= :notaMinima")
-    List<Long> findIdsDeFilmesSemente(@Param("notaMinima") double notaMinima);
+    // filmes que alguém curtiu ou avaliou bem e que ainda não tiveram o grafo expandido
+    @Query("select distinct r.movie.id from Review r " +
+            "where (r.liked = true or r.rating >= :notaMinima) and r.movie.grafoExpandido = false")
+    List<Long> findIdsDeSementesPendentes(@Param("notaMinima") double notaMinima);
 }

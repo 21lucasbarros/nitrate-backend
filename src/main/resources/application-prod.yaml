@@ -1,0 +1,33 @@
+# Perfil de produção (ativado no Docker com SPRING_PROFILES_ACTIVE=prod).
+# Não tem nenhum segredo: tudo vem de variáveis de ambiente configuradas no host.
+spring:
+  application:
+    name: nitrate
+
+  datasource:
+    url: ${DATABASE_URL}          # ex.: jdbc:postgresql://HOST.neon.tech/neondb?sslmode=require
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+
+server:
+  port: ${PORT:8080}              # Render/Railway/Fly informam a porta por PORT
+
+tmdb:
+  api-key: ${TMDB_API_KEY}
+  base-url: https://api.themoviedb.org/3
+
+jwt:
+  secret: ${JWT_SECRET}           # mínimo de 32 caracteres (HMAC-SHA256)
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}   # ex.: https://nitrate.vercel.app,https://nitrate-*.vercel.app
+
+admin:
+  secret: ${CRON_SECRET}          # protege /admin/**; a Vercel envia nos Cron Jobs

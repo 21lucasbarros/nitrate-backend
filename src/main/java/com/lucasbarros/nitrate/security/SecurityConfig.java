@@ -1,11 +1,14 @@
 package com.lucasbarros.nitrate.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,6 +23,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 
 @Configuration
@@ -31,6 +36,16 @@ public class SecurityConfig {
 
     @Autowired
     private CustomUserDetailsService userDetailsService;
+
+    // origens do front separadas por vírgula; aceita curingas para os previews da Vercel
+    // (ex.: "https://nitrate.vercel.app,https://nitrate-*.vercel.app")
+    @Value("${cors.allowed-origins:http://localhost:3000}")
+    private List<String> allowedOrigins;
+
+    // segredo do /admin/**. Mesmo valor do CRON_SECRET da Vercel, que é enviado pelos
+    // Cron Jobs como "Authorization: Bearer <segredo>". Vazio = /admin bloqueado.
+    @Value("${admin.secret:}")
+    private String adminSecret;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -57,7 +72,9 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/admin/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/health").permitAll() // health check do host
+                        .requestMatchers("/admin/**").access((autenticacao, contexto) ->
+                                new AuthorizationDecision(segredoAdminValido(contexto.getRequest())))
                         .requestMatchers(HttpMethod.GET, "/movies/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/people/**").permitAll()
                         .requestMatchers("/users/me", "/users/me/**").authenticated()
@@ -73,10 +90,20 @@ public class SecurityConfig {
         return http.build();
     }
 
+    private boolean segredoAdminValido(HttpServletRequest request) {
+        if (adminSecret == null || adminSecret.isBlank()) return false;
+        String header = request.getHeader("Authorization");
+        if (header == null) return false;
+        // comparação em tempo constante, para não vazar o segredo pelo tempo de resposta
+        return MessageDigest.isEqual(
+                header.getBytes(StandardCharsets.UTF_8),
+                ("Bearer " + adminSecret).getBytes(StandardCharsets.UTF_8));
+    }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+        configuration.setAllowedOriginPatterns(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
 

@@ -15,7 +15,7 @@ public class ImportResource {
     @Autowired
     private MovieGraphCache graphCache;
 
-    // TODO: restringir esse endpoint (exigir um papel ADMIN) antes de ir pra produção.
+    // protegido pelo segredo do /admin/** (ver SecurityConfig)
     @PostMapping
     public String importar(@RequestParam(defaultValue = "2") int paginas) {
         int total = tmdbImportService.importarFilmesPopulares(paginas);

@@ -1,0 +1,10 @@
+# saída de build e arquivos de IDE/sistema
+target/
+.idea/
+*.iml
+.DS_Store
+.git/
+
+# configuração local com credenciais: NUNCA pode entrar na imagem
+src/main/resources/application.yaml
+src/main/resources/application.yml

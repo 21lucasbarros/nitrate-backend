@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -52,15 +54,29 @@ public class GraphExpansionService {
         }
     }
 
-    /** expande a partir de todos os filmes que já foram curtidos/bem avaliados (backfill) */
-    @Async
-    public void expandirTodasAsSementes() {
-        List<Long> sementes = reviewRepository.findIdsDeFilmesSemente(NOTA_MINIMA_SEMENTE);
-        log.info("Expandindo o grafo a partir de {} filme(s) semente", sementes.size());
-        for (Long movieId : sementes) {
-            expandir(movieId); // chamada interna: roda nesta mesma thread, um filme por vez
+    public record ResultadoExpansao(int sementesProcessadas, int filmesNovos, int sementesRestantes) {}
+
+    /**
+     * Expande a partir dos filmes curtidos/bem avaliados que ainda estão pendentes, até
+     * acabar o orçamento de tempo. É retomável: se uma expansão em segundo plano foi
+     * interrompida (a instância desligou), a próxima chamada continua de onde parou.
+     */
+    public ResultadoExpansao expandirPendentes(Duration orcamento) {
+        Instant limite = Instant.now().plus(orcamento);
+        List<Long> pendentes = reviewRepository.findIdsDeSementesPendentes(NOTA_MINIMA_SEMENTE);
+
+        int processadas = 0;
+        int novos = 0;
+        for (Long movieId : pendentes) {
+            if (Instant.now().isAfter(limite)) break;
+            try {
+                novos += expandirAgora(movieId);
+            } catch (Exception e) {
+                log.warn("Falha ao expandir o grafo a partir do filme {}: {}", movieId, e.getMessage());
+            }
+            processadas++;
         }
-        log.info("Expansão do grafo concluída");
+        return new ResultadoExpansao(processadas, novos, pendentes.size() - processadas);
     }
 
     /** @return quantos filmes novos entraram no acervo */
