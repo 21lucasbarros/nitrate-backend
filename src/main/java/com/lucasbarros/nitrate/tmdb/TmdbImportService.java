@@ -46,7 +46,13 @@ public class TmdbImportService {
         return totalImportado;
     }
 
-    private void importarFilme(Long tmdbId) {
+    // devolve o filme do banco ou importa do TMDB se ainda não existir
+    @Transactional
+    public Movie obterOuImportar(Long tmdbId) {
+        return movieRepository.findByTmdbId(tmdbId).orElseGet(() -> importarFilme(tmdbId));
+    }
+
+    private Movie importarFilme(Long tmdbId) {
         TmdbMovieDetailDTO detalhe = tmdbClient.buscarDetalhesComCreditos(tmdbId);
 
         Director diretor = extrairDiretor(detalhe);
@@ -68,7 +74,7 @@ public class TmdbImportService {
 
         filme = movieRepository.save(filme);
         adicionarElenco(filme, detalhe);
-        movieRepository.save(filme);
+        return movieRepository.save(filme);
     }
 
     private Director extrairDiretor(TmdbMovieDetailDTO detalhe) {

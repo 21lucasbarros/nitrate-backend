@@ -4,14 +4,13 @@ import com.lucasbarros.nitrate.dto.RecommendationRequestDTO;
 import com.lucasbarros.nitrate.dto.RecommendationResultDTO;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.graph.MovieGraph;
+import com.lucasbarros.nitrate.graph.MovieGraphCache;
 import com.lucasbarros.nitrate.recommender.RecommendationEngine;
 import com.lucasbarros.nitrate.recommender.RecommendationResult;
 import com.lucasbarros.nitrate.recommender.UserPreferences;
-import com.lucasbarros.nitrate.repositories.MovieRepository;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,12 +20,12 @@ public class RecommendationService {
     private static final int TOP_N_PADRAO = 5;
 
     @Autowired
-    private MovieRepository movieRepository;
+    private MovieGraphCache graphCache;
 
-    @Transactional(readOnly = true)
     public List<RecommendationResultDTO> recomendar(RecommendationRequestDTO request) {
-        List<Movie> todosOsFilmes = movieRepository.findAll();
-        MovieGraph grafo = new MovieGraph(todosOsFilmes);
+        // o grafo vem do cache; os filmes curtidos precisam ser as mesmas instâncias que estão nele
+        MovieGraph grafo = graphCache.obter();
+        List<Movie> todosOsFilmes = grafo.getAllMovies();
 
         UserPreferences preferencias = montarPreferencias(request, todosOsFilmes);
 

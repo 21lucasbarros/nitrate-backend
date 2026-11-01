@@ -26,7 +26,7 @@ public class UserPreferences {
     }
 
     public void addFavoriteDirector(String director) {
-        favoriteActors.add(director.toLowerCase());
+        favoriteDirectors.add(director.toLowerCase());
     }
 
     public void addFavoriteActor(String actor) {

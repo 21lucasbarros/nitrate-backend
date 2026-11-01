@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
 import org.springframework.security.core.AuthenticationException;
 import java.time.Instant;
@@ -83,6 +85,28 @@ public class ResourceExceptionHandler {
         erro.setMessage(e.getMessage());
         erro.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
+
+    @ExceptionHandler(HttpClientErrorException.NotFound.class)
+    public ResponseEntity<StandardError> tmdbNotFound(HttpClientErrorException.NotFound e, HttpServletRequest request) {
+        StandardError erro = new StandardError();
+        erro.setTimestamp(Instant.now());
+        erro.setStatus(HttpStatus.NOT_FOUND.value());
+        erro.setError("Recurso não encontrado");
+        erro.setMessage("Filme não encontrado no TMDB.");
+        erro.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(erro);
+    }
+
+    @ExceptionHandler(RestClientException.class)
+    public ResponseEntity<StandardError> tmdbIndisponivel(RestClientException e, HttpServletRequest request) {
+        StandardError erro = new StandardError();
+        erro.setTimestamp(Instant.now());
+        erro.setStatus(HttpStatus.BAD_GATEWAY.value());
+        erro.setError("Falha ao consultar o TMDB");
+        erro.setMessage("Não foi possível consultar o TMDB agora. Tente novamente.");
+        erro.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(erro);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

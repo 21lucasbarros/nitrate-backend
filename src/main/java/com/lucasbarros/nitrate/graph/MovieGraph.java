@@ -20,6 +20,7 @@ public class MovieGraph {
 
     public MovieGraph(List<Movie> movies) {
         this.movies = movies;
+        montarIndice();
     }
 
     private void adicionarNoIndice(Map<String, List<Movie>> mapa, String chave, Movie movie) {
@@ -31,7 +32,8 @@ public class MovieGraph {
         lista.add(movie);
     }
 
-    private void adicionarNoIndiceEra(int era, Movie movie) {
+    private void adicionarNoIndiceEra(Integer era, Movie movie) {
+        if (era == null) return; // filme sem ano de lançamento não entra no índice de época
         List<Movie> lista = byEra.get(era);
         if(lista == null) {
             lista = new ArrayList<>();
@@ -154,6 +156,9 @@ public class MovieGraph {
 
     private List<Edge> conectarPorEpoca(Movie source) {
         List<Edge> edges = new ArrayList<>();
+        if (source.getEra() == null) {
+            return edges;
+        }
         List<Movie> candidatos = byEra.get(source.getEra());
         if (candidatos == null) {
             return edges;

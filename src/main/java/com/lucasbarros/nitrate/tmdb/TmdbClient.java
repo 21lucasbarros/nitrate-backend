@@ -40,4 +40,17 @@ public class TmdbClient {
                 .retrieve()
                 .body(TmdbMovieDetailDTO.class);
     }
+
+    public TmdbPopularResponseDTO pesquisarFilmes(String termo) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/search/movie")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .queryParam("include_adult", false)
+                        .queryParam("query", termo)
+                        .build())
+                .retrieve()
+                .body(TmdbPopularResponseDTO.class);
+    }
 }

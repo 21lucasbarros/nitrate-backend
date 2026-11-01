@@ -122,7 +122,9 @@ public class Movie implements Serializable {
         this.cast = cast;
     }
 
-    public int getEra() {
+    // década de lançamento (ex.: 1978 -> 1970); null se o ano não for conhecido
+    public Integer getEra() {
+        if (releaseYear == null) return null;
         return (releaseYear / 10) * 10;
     }
 
