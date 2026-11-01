@@ -16,7 +16,6 @@ public class MovieGraph {
     private Map<String, List<Movie>> byActor = new HashMap<>();
     private Map<String, List<Movie>> byGenre = new HashMap<>();
     private Map<String, List<Movie>> byFranchise = new HashMap<>();
-    private Map<Integer, List<Movie>> byEra = new HashMap<>();
 
     public MovieGraph(List<Movie> movies) {
         this.movies = movies;
@@ -28,16 +27,6 @@ public class MovieGraph {
         if(lista == null) {
             lista = new ArrayList<>();
             mapa.put(chave, lista);
-        }
-        lista.add(movie);
-    }
-
-    private void adicionarNoIndiceEra(Integer era, Movie movie) {
-        if (era == null) return; // filme sem ano de lançamento não entra no índice de época
-        List<Movie> lista = byEra.get(era);
-        if(lista == null) {
-            lista = new ArrayList<>();
-            byEra.put(era, lista);
         }
         lista.add(movie);
     }
@@ -59,8 +48,6 @@ public class MovieGraph {
             if(movie.getFranchise() != null) {
                 adicionarNoIndice(byFranchise, movie.getFranchise().getName().toLowerCase(), movie);
             }
-
-            adicionarNoIndiceEra(movie.getEra(), movie);
         }
     }
 
@@ -70,7 +57,6 @@ public class MovieGraph {
         edges.addAll(conectarPorAtores(source));
         edges.addAll(conectarPorGeneros(source));
         edges.addAll(conectarPorFranquia(source));
-        edges.addAll(conectarPorEpoca(source));
         return edges;
     }
 
@@ -150,24 +136,6 @@ public class MovieGraph {
             if (candidato.equals(source)) continue;
             String reason = "mesma franquia: " + nomeDaFranquia;
             edges.add(new Edge(candidato, ConnectionType.FRANCHISE, ConnectionType.FRANCHISE.getBaseWeight(), reason, nomeDaFranquia));
-        }
-        return edges;
-    }
-
-    private List<Edge> conectarPorEpoca(Movie source) {
-        List<Edge> edges = new ArrayList<>();
-        if (source.getEra() == null) {
-            return edges;
-        }
-        List<Movie> candidatos = byEra.get(source.getEra());
-        if (candidatos == null) {
-            return edges;
-        }
-
-        for (Movie candidato : candidatos) {
-            if (candidato.equals(source)) continue;
-            String reason = "mesma época: década de " + source.getEra();
-            edges.add(new Edge(candidato, ConnectionType.ERA, ConnectionType.ERA.getBaseWeight(), reason, String.valueOf(source.getEra())));
         }
         return edges;
     }

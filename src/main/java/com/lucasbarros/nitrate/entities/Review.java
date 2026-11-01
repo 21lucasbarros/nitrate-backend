@@ -33,6 +33,10 @@ public class Review implements Serializable {
 
     private boolean liked;
 
+    // o default no banco preenche as reviews que já existiam quando a coluna foi criada
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean spoiler;
+
     private LocalDate watchedOn;
 
     private Instant createdAt = Instant.now();
@@ -64,6 +68,9 @@ public class Review implements Serializable {
 
     public boolean isLiked() { return liked; }
     public void setLiked(boolean liked) { this.liked = liked; }
+
+    public boolean isSpoiler() { return spoiler; }
+    public void setSpoiler(boolean spoiler) { this.spoiler = spoiler; }
 
     public LocalDate getWatchedOn() { return watchedOn; }
     public void setWatchedOn(LocalDate watchedOn) { this.watchedOn = watchedOn; }

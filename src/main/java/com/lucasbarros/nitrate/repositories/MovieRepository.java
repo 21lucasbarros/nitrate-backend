@@ -2,8 +2,10 @@ package com.lucasbarros.nitrate.repositories;
 
 import com.lucasbarros.nitrate.entities.Movie;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -22,4 +24,9 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
 
     @Query("select distinct m from Movie m left join fetch m.cast c left join fetch c.actor where m in :filmes")
     List<Movie> carregarElenco(@Param("filmes") Collection<Movie> filmes);
+
+    @Modifying
+    @Transactional
+    @Query("update Movie m set m.grafoExpandido = true where m.id = :id")
+    void marcarGrafoExpandido(@Param("id") Long id);
 }

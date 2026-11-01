@@ -47,6 +47,10 @@ public class Movie implements Serializable {
 
     private String posterPath;
 
+    // já buscamos os filmes do diretor e do elenco principal deste filme? (ver GraphExpansionService)
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean grafoExpandido;
+
     public Movie() {
     }
 
@@ -122,12 +126,6 @@ public class Movie implements Serializable {
         this.cast = cast;
     }
 
-    // década de lançamento (ex.: 1978 -> 1970); null se o ano não for conhecido
-    public Integer getEra() {
-        if (releaseYear == null) return null;
-        return (releaseYear / 10) * 10;
-    }
-
     public Long getTmdbId() {
         return tmdbId;
     }
@@ -150,6 +148,14 @@ public class Movie implements Serializable {
 
     public void setPosterPath(String posterPath) {
         this.posterPath = posterPath;
+    }
+
+    public boolean isGrafoExpandido() {
+        return grafoExpandido;
+    }
+
+    public void setGrafoExpandido(boolean grafoExpandido) {
+        this.grafoExpandido = grafoExpandido;
     }
 
     public MovieCast findCastMember(String actorName) {

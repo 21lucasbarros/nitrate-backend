@@ -1,6 +1,8 @@
 package com.lucasbarros.nitrate.tmdb;
 
 import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieDetailDTO;
+import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonDetailDTO;
+import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonSearchResponseDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPopularResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -52,5 +54,30 @@ public class TmdbClient {
                         .build())
                 .retrieve()
                 .body(TmdbPopularResponseDTO.class);
+    }
+
+    public TmdbPersonSearchResponseDTO pesquisarPessoas(String termo) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/search/person")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .queryParam("include_adult", false)
+                        .queryParam("query", termo)
+                        .build())
+                .retrieve()
+                .body(TmdbPersonSearchResponseDTO.class);
+    }
+
+    public TmdbPersonDetailDTO buscarPessoaComFilmografia(Long personId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/person/{id}")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .queryParam("append_to_response", "movie_credits")
+                        .build(personId))
+                .retrieve()
+                .body(TmdbPersonDetailDTO.class);
     }
 }

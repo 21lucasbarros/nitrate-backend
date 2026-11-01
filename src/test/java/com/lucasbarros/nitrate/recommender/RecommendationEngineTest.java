@@ -100,4 +100,15 @@ class RecommendationEngineTest {
 
         assertEquals(outro, resultado.get(0).getMovie());
     }
+
+    @Test
+    void mesmaEpocaSozinhaNaoConectaMais() {
+        Movie a = filme("Filme A", 2021, new Director("Diretora A"), null);
+        Movie b = filme("Filme B", 2024, new Director("Diretor B"), null);
+
+        UserPreferences prefs = new UserPreferences();
+        prefs.addLikedMovie(a);
+
+        assertTrue(new RecommendationEngine(new MovieGraph(List.of(a, b))).recommend(prefs, 5).isEmpty());
+    }
 }

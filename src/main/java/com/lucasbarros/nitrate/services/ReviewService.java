@@ -28,6 +28,7 @@ public class ReviewService {
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private MovieRepository movieRepository;
     @Autowired private WatchlistRepository watchlistRepository;
+    @Autowired private GraphExpansionService graphExpansionService;
 
     @Transactional
     public ReviewDTO criar(User user, ReviewRequestDTO request) {
@@ -48,6 +49,7 @@ public class ReviewService {
         // assistiu, então sai da watchlist
         watchlistRepository.findByUserAndMovie(user, filme).ifPresent(watchlistRepository::delete);
 
+        expandirGrafoSeGostou(review);
         return new ReviewDTO(review);
     }
 
@@ -56,6 +58,7 @@ public class ReviewService {
         Review review = buscarDoUsuario(user, id);
         aplicar(review, request);
         review.setUpdatedAt(Instant.now());
+        expandirGrafoSeGostou(review);
         return new ReviewDTO(review);
     }
 
@@ -74,6 +77,15 @@ public class ReviewService {
         Movie filme = movieRepository.findById(movieId)
                 .orElseThrow(() -> new ResourceNotFoundException("Filme não encontrado. Id: " + movieId));
         return paraDTO(reviewRepository.findByMovieOrderByCreatedAtDesc(filme));
+    }
+
+    // gostou do filme: o diretor e o elenco dele passam a alimentar o grafo (em segundo plano)
+    private void expandirGrafoSeGostou(Review review) {
+        boolean gostou = review.isLiked()
+                || (review.getRating() != null && review.getRating() >= GraphExpansionService.NOTA_MINIMA_SEMENTE);
+        if (gostou && !review.getMovie().isGrafoExpandido()) {
+            graphExpansionService.expandir(review.getMovie().getId());
+        }
     }
 
     private Review buscarDoUsuario(User user, Long id) {
@@ -105,6 +117,8 @@ public class ReviewService {
         review.setRating(nota);
         review.setText(texto);
         review.setLiked(request.isLiked());
+        // sem texto não há o que esconder
+        review.setSpoiler(texto != null && request.isSpoiler());
         review.setWatchedOn(assistidoEm);
     }
 

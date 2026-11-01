@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TmdbCrewMemberDTO {
+    private Long id;
     private String name;
     private String job; // se é diretor, produtor, etc
 
@@ -22,4 +23,7 @@ public class TmdbCrewMemberDTO {
     public void setJob(String job) {
         this.job = job;
     }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 }
