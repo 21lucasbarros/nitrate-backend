@@ -44,14 +44,22 @@ public class TmdbClient {
     }
 
     public TmdbPopularResponseDTO pesquisarFilmes(String termo) {
+        return pesquisarFilmes(termo, null);
+    }
+
+    /** com `ano`, só traz filmes lançados naquele ano (essencial para títulos repetidos) */
+    public TmdbPopularResponseDTO pesquisarFilmes(String termo, Integer ano) {
         return restClient().get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/search/movie")
-                        .queryParam("api_key", properties.getApiKey())
-                        .queryParam("language", "pt-BR")
-                        .queryParam("include_adult", false)
-                        .queryParam("query", termo)
-                        .build())
+                .uri(uriBuilder -> {
+                    uriBuilder
+                            .path("/search/movie")
+                            .queryParam("api_key", properties.getApiKey())
+                            .queryParam("language", "pt-BR")
+                            .queryParam("include_adult", false)
+                            .queryParam("query", termo);
+                    if (ano != null) uriBuilder.queryParam("primary_release_year", ano);
+                    return uriBuilder.build();
+                })
                 .retrieve()
                 .body(TmdbPopularResponseDTO.class);
     }

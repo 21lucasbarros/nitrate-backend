@@ -17,13 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class ReviewService {
 
-    private static final int TEXTO_MAX = 5000;
+    private static final int TEXTO_MAX = 20000;
 
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private MovieRepository movieRepository;
@@ -51,6 +52,31 @@ public class ReviewService {
 
         expandirGrafoSeGostou(review);
         return new ReviewDTO(review);
+    }
+
+    /**
+     * Usado na importação: cria a review só se ainda não existir (nunca sobrescreve) e com a
+     * data original do registro. Não dispara a expansão do grafo: num import de centenas de
+     * filmes isso importaria milhares de filmes de uma vez; o cron diário cuida disso.
+     */
+    @Transactional
+    public boolean criarSeNaoExistir(User user, Long movieId, ReviewRequestDTO request, LocalDate registradoEm) {
+        Movie filme = movieRepository.findById(movieId)
+                .orElseThrow(() -> new ResourceNotFoundException("Filme não encontrado. Id: " + movieId));
+        if (reviewRepository.findByUserAndMovie(user, filme).isPresent()) {
+            return false;
+        }
+
+        Review review = new Review(user, filme);
+        aplicar(review, request);
+        if (registradoEm != null) {
+            Instant data = registradoEm.atStartOfDay(ZoneOffset.UTC).toInstant();
+            review.setCreatedAt(data);
+            review.setUpdatedAt(data);
+        }
+        reviewRepository.save(review);
+        watchlistRepository.findByUserAndMovie(user, filme).ifPresent(watchlistRepository::delete);
+        return true;
     }
 
     @Transactional

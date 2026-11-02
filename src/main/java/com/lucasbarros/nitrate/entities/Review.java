@@ -28,7 +28,8 @@ public class Review implements Serializable {
     // de 0.5 a 5, em passos de 0.5. null = assistiu mas não deu nota
     private Double rating;
 
-    @Column(length = 5000)
+    // TEXT: reviews importadas do Letterboxd passam de 10 mil caracteres (ver SchemaAdjustments)
+    @Column(columnDefinition = "text")
     private String text;
 
     private boolean liked;
