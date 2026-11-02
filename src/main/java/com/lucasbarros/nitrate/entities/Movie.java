@@ -1,12 +1,14 @@
 package com.lucasbarros.nitrate.entities;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.io.Serializable;
 import java.security.PrivateKey;
 import java.util.*;
 
 @Entity
+@BatchSize(size = 50) // em listas, as referências a esta entidade são carregadas em lotes (evita N+1)
 @Table(name = "tb_movie")
 public class Movie implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -30,12 +32,15 @@ public class Movie implements Serializable {
     @JoinColumn(name = "franchise_id")
     private Franchise franchise;
 
+    // em listas de filmes, gêneros e elenco são carregados em lotes (evita uma consulta por filme)
+    @BatchSize(size = 50)
     @ManyToMany
     @JoinTable(name = "tb_movie_genre",
             joinColumns = @JoinColumn(name = "movie_id"),
             inverseJoinColumns = @JoinColumn(name = "genre_id"))
     private Set<Genre> genres = new HashSet<>();
 
+    @BatchSize(size = 50)
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MovieCast> cast = new ArrayList<>();
 

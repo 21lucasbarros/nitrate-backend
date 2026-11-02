@@ -3,6 +3,8 @@ package com.lucasbarros.nitrate.repositories;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.Review;
 import com.lucasbarros.nitrate.entities.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,8 +15,10 @@ import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findByUserOrderByCreatedAtDesc(User user);
+    Page<Review> findByUser(User user, Pageable pageable);
+    Page<Review> findByUserAndTextIsNotNull(User user, Pageable pageable);
     List<Review> findByMovieOrderByCreatedAtDesc(Movie movie);
-    List<Review> findTop20ByOrderByCreatedAtDesc();
+    List<Review> findAllByOrderByCreatedAtDesc(Pageable pageable);
     // destaque na landing: reviews com texto e sem spoiler
     List<Review> findTop3ByTextIsNotNullAndSpoilerFalseOrderByCreatedAtDesc();
     List<Review> findByUserAndWatchedOnBetweenOrderByWatchedOnAsc(User user, LocalDate inicio, LocalDate fim);

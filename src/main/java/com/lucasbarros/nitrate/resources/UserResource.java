@@ -1,6 +1,7 @@
 package com.lucasbarros.nitrate.resources;
 
 import com.lucasbarros.nitrate.dto.MovieUserStateDTO;
+import com.lucasbarros.nitrate.dto.PageDTO;
 import com.lucasbarros.nitrate.dto.RecommendationResultDTO;
 import com.lucasbarros.nitrate.dto.RetrospectiveDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
@@ -51,8 +52,11 @@ public class UserResource {
     }
 
     @GetMapping("/{username}/reviews")
-    public List<ReviewDTO> reviews(@PathVariable String username) {
-        return userService.reviews(username);
+    public PageDTO<ReviewDTO> reviews(@PathVariable String username,
+                                      @RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "30") int size,
+                                      @RequestParam(defaultValue = "false") boolean withText) {
+        return userService.reviews(username, page, size, withText);
     }
 
     @GetMapping("/{username}/watchlist")
@@ -60,14 +64,15 @@ public class UserResource {
         return userService.watchlist(username);
     }
 
-    // pública, para poder compartilhar o link da retrospectiva
-    @GetMapping("/{username}/retrospective")
-    public RetrospectiveDTO retrospectiva(@PathVariable String username, @RequestParam String month) {
-        return retrospectiveService.retrospectiva(username, month);
+    // a retrospectiva é exclusiva de quem é dono do diário: só existe em /users/me
+    @GetMapping("/me/retrospective")
+    public RetrospectiveDTO retrospectiva(@AuthenticationPrincipal CustomUserDetails principal,
+                                          @RequestParam String month) {
+        return retrospectiveService.retrospectiva(principal.getUser(), month);
     }
 
-    @GetMapping("/{username}/retrospective/months")
-    public List<String> mesesComRetrospectiva(@PathVariable String username) {
-        return retrospectiveService.mesesDisponiveis(username);
+    @GetMapping("/me/retrospective/months")
+    public List<String> mesesComRetrospectiva(@AuthenticationPrincipal CustomUserDetails principal) {
+        return retrospectiveService.mesesDisponiveis(principal.getUser());
     }
 }

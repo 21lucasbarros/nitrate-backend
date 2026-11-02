@@ -1,10 +1,12 @@
 package com.lucasbarros.nitrate.entities;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.io.Serializable;
 import java.util.Objects;
 
 @Entity
+@BatchSize(size = 50) // em listas, as referências a esta entidade são carregadas em lotes (evita N+1)
 @Table(name = "tb_franchise")
 public class Franchise implements Serializable {
     private static final long serialVersionUID = 1L;

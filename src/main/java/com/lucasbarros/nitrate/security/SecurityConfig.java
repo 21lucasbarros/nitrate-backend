@@ -82,7 +82,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/people/**").permitAll()
                         .requestMatchers("/users/me", "/users/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/users/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/reviews/recent", "/reviews/featured").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/reviews/*").permitAll() // recent, featured e /reviews/{id}
                         .anyRequest().authenticated()
                 )
                 // sem sessão válida responde 401 (o padrão do Spring seria 403)

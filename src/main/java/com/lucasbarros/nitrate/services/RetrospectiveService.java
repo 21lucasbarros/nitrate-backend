@@ -10,8 +10,6 @@ import com.lucasbarros.nitrate.entities.MovieCast;
 import com.lucasbarros.nitrate.entities.Review;
 import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
-import com.lucasbarros.nitrate.repositories.UserRepository;
-import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,12 +28,10 @@ public class RetrospectiveService {
     private static final int TOP_FAVORITOS = 5;
     private static final int MIN_FILMES_ATOR_RECORRENTE = 2;
 
-    @Autowired private UserRepository userRepository;
     @Autowired private ReviewRepository reviewRepository;
 
     @Transactional(readOnly = true)
-    public RetrospectiveDTO retrospectiva(String username, String mes) {
-        User user = buscarUsuario(username);
+    public RetrospectiveDTO retrospectiva(User user, String mes) {
         YearMonth periodo = parseMes(mes);
         List<Review> reviews = reviewRepository.findByUserAndWatchedOnBetweenOrderByWatchedOnAsc(
                 user, periodo.atDay(1), periodo.atEndOfMonth());
@@ -102,8 +98,7 @@ public class RetrospectiveService {
 
     /** meses em que a pessoa registrou algum filme, do mais recente para o mais antigo */
     @Transactional(readOnly = true)
-    public List<String> mesesDisponiveis(String username) {
-        User user = buscarUsuario(username);
+    public List<String> mesesDisponiveis(User user) {
         SortedSet<YearMonth> meses = new TreeSet<>(Comparator.reverseOrder());
         for (LocalDate data : reviewRepository.findDatasAssistidas(user)) {
             meses.add(YearMonth.from(data));
@@ -144,8 +139,4 @@ public class RetrospectiveService {
         }
     }
 
-    private User buscarUsuario(String username) {
-        return userRepository.findByUsername(username.toLowerCase().trim())
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + username));
-    }
 }

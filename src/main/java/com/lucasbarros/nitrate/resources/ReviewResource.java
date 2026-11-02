@@ -20,8 +20,14 @@ public class ReviewResource {
     private ReviewService reviewService;
 
     @GetMapping("/recent")
-    public List<ReviewDTO> recentes() {
-        return reviewService.recentes();
+    public List<ReviewDTO> recentes(@RequestParam(defaultValue = "20") int limit) {
+        return reviewService.recentes(limit);
+    }
+
+    // pública: é a página da review (link "ver review completa")
+    @GetMapping("/{id}")
+    public ReviewDTO buscar(@PathVariable Long id) {
+        return reviewService.buscarPorId(id);
     }
 
     @GetMapping("/featured")

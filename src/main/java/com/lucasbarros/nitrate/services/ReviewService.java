@@ -12,6 +12,7 @@ import com.lucasbarros.nitrate.services.exceptions.ConflictException;
 import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -94,8 +95,16 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReviewDTO> recentes() {
-        return paraDTO(reviewRepository.findTop20ByOrderByCreatedAtDesc());
+    public List<ReviewDTO> recentes(int limite) {
+        int tamanho = Math.min(Math.max(1, limite), 20);
+        return paraDTO(reviewRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, tamanho)));
+    }
+
+    @Transactional(readOnly = true)
+    public ReviewDTO buscarPorId(Long id) {
+        return reviewRepository.findById(id)
+                .map(ReviewDTO::new)
+                .orElseThrow(() -> new ResourceNotFoundException("Review não encontrada. Id: " + id));
     }
 
     @Transactional(readOnly = true)
