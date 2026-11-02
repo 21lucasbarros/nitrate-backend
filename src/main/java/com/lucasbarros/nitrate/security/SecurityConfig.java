@@ -73,13 +73,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/health").permitAll() // health check do host
+                        // erros do próprio Spring (ex.: parâmetro faltando) são encaminhados para /error;
+                        // bloqueado, todo 400 virava 401
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/admin/**").access((autenticacao, contexto) ->
                                 new AuthorizationDecision(segredoAdminValido(contexto.getRequest())))
                         .requestMatchers(HttpMethod.GET, "/movies/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/people/**").permitAll()
                         .requestMatchers("/users/me", "/users/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/users/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/reviews/recent").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/reviews/recent", "/reviews/featured").permitAll()
                         .anyRequest().authenticated()
                 )
                 // sem sessão válida responde 401 (o padrão do Spring seria 403)

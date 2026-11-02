@@ -73,6 +73,11 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
+    public List<ReviewDTO> destaques() {
+        return paraDTO(reviewRepository.findTop3ByTextIsNotNullAndSpoilerFalseOrderByCreatedAtDesc());
+    }
+
+    @Transactional(readOnly = true)
     public List<ReviewDTO> doFilme(Long movieId) {
         Movie filme = movieRepository.findById(movieId)
                 .orElseThrow(() -> new ResourceNotFoundException("Filme não encontrado. Id: " + movieId));

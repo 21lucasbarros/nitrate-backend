@@ -2,11 +2,13 @@ package com.lucasbarros.nitrate.resources;
 
 import com.lucasbarros.nitrate.dto.MovieUserStateDTO;
 import com.lucasbarros.nitrate.dto.RecommendationResultDTO;
+import com.lucasbarros.nitrate.dto.RetrospectiveDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
 import com.lucasbarros.nitrate.dto.UserProfileDTO;
 import com.lucasbarros.nitrate.dto.WatchlistItemDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
 import com.lucasbarros.nitrate.services.RecommendationService;
+import com.lucasbarros.nitrate.services.RetrospectiveService;
 import com.lucasbarros.nitrate.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +25,9 @@ public class UserResource {
 
     @Autowired
     private RecommendationService recommendationService;
+
+    @Autowired
+    private RetrospectiveService retrospectiveService;
 
     @GetMapping("/me")
     public UserProfileDTO me(@AuthenticationPrincipal CustomUserDetails principal) {
@@ -53,5 +58,16 @@ public class UserResource {
     @GetMapping("/{username}/watchlist")
     public List<WatchlistItemDTO> watchlist(@PathVariable String username) {
         return userService.watchlist(username);
+    }
+
+    // pública, para poder compartilhar o link da retrospectiva
+    @GetMapping("/{username}/retrospective")
+    public RetrospectiveDTO retrospectiva(@PathVariable String username, @RequestParam String month) {
+        return retrospectiveService.retrospectiva(username, month);
+    }
+
+    @GetMapping("/{username}/retrospective/months")
+    public List<String> mesesComRetrospectiva(@PathVariable String username) {
+        return retrospectiveService.mesesDisponiveis(username);
     }
 }

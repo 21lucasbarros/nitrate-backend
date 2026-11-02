@@ -24,6 +24,11 @@ public class ReviewResource {
         return reviewService.recentes();
     }
 
+    @GetMapping("/featured")
+    public List<ReviewDTO> destaques() {
+        return reviewService.destaques();
+    }
+
     @PostMapping
     public ResponseEntity<ReviewDTO> criar(@AuthenticationPrincipal CustomUserDetails principal,
                                            @RequestBody ReviewRequestDTO request) {
