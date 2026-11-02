@@ -14,6 +14,10 @@ spring:
       ddl-auto: update
     show-sql: false
     open-in-view: false
+    properties:
+      hibernate:
+        # carrega gêneros/diretor/franquia/elenco em lotes, e não uma consulta por filme (N+1)
+        default_batch_fetch_size: 50
 
 server:
   port: ${PORT:8080}              # Render/Railway/Fly informam a porta por PORT
