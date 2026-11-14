@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonSearchResponseDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPopularResponseDTO;
+import com.lucasbarros.nitrate.tmdb.dto.TmdbWatchProvidersDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -87,5 +88,15 @@ public class TmdbClient {
                         .build(personId))
                 .retrieve()
                 .body(TmdbPersonDetailDTO.class);
+    }
+
+    public TmdbWatchProvidersDTO buscarOndeAssistir(Long tmdbId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/movie/{id}/watch/providers")
+                        .queryParam("api_key", properties.getApiKey())
+                        .build(tmdbId))
+                .retrieve()
+                .body(TmdbWatchProvidersDTO.class);
     }
 }

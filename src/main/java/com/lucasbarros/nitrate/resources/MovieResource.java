@@ -3,6 +3,8 @@ package com.lucasbarros.nitrate.resources;
 import com.lucasbarros.nitrate.dto.MovieCreditsDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.MovieSearchResultDTO;
+import com.lucasbarros.nitrate.dto.MovieStatsDTO;
+import com.lucasbarros.nitrate.dto.WatchProvidersDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
 import com.lucasbarros.nitrate.services.MovieService;
 import com.lucasbarros.nitrate.services.ReviewService;
@@ -60,5 +62,15 @@ public class MovieResource {
     @GetMapping(value = "/{id}/credits")
     public MovieCreditsDTO creditos(@PathVariable Long id) {
         return movieService.creditos(id);
+    }
+
+    @GetMapping(value = "/{id}/stats")
+    public MovieStatsDTO estatisticas(@PathVariable Long id) {
+        return movieService.estatisticas(id);
+    }
+
+    @GetMapping(value = "/{id}/watch-providers")
+    public WatchProvidersDTO ondeAssistir(@PathVariable Long id) {
+        return movieService.ondeAssistir(id);
     }
 }

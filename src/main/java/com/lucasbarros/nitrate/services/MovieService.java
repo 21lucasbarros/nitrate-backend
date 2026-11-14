@@ -3,9 +3,13 @@ package com.lucasbarros.nitrate.services;
 import com.lucasbarros.nitrate.dto.MovieCreditsDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.MovieSearchResultDTO;
+import com.lucasbarros.nitrate.dto.MovieStatsDTO;
+import com.lucasbarros.nitrate.dto.WatchProvidersDTO;
 import com.lucasbarros.nitrate.graph.MovieGraphCache;
 import com.lucasbarros.nitrate.entities.Movie;
+import com.lucasbarros.nitrate.entities.Review;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
+import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import com.lucasbarros.nitrate.tmdb.TmdbClient;
 import com.lucasbarros.nitrate.tmdb.TmdbImportService;
@@ -13,15 +17,18 @@ import com.lucasbarros.nitrate.tmdb.dto.TmdbCastMemberDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbCreditsDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbCrewMemberDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieSummaryDTO;
+import com.lucasbarros.nitrate.tmdb.dto.TmdbWatchProvidersDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +48,9 @@ public class MovieService {
 
     @Autowired
     private MovieGraphCache graphCache;
+
+    @Autowired
+    private ReviewRepository reviewRepository;
 
     @Transactional(readOnly = true)
     public List<MovieDTO> buscarTodos() {
@@ -135,5 +145,86 @@ public class MovieService {
         MovieCreditsDTO resultado = new MovieCreditsDTO(direcao, elenco);
         cacheCreditos.put(filme.getTmdbId(), new CreditosEmCache(resultado, Instant.now()));
         return resultado;
+    }
+
+    @Transactional(readOnly = true)
+    public MovieStatsDTO estatisticas(Long id) {
+        Movie filme = movieRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Filme não encontrado. Id: " + id));
+
+        // a mais recente de cada pessoa (reassistidos não contam duas vezes)
+        Map<Long, Review> ultimaPorPessoa = new HashMap<>();
+        for (Review review : reviewRepository.findByMovieOrderByCreatedAtDesc(filme)) {
+            ultimaPorPessoa.merge(review.getUser().getId(), review, (atual, outra) ->
+                    maisRecente(outra, atual) ? outra : atual);
+        }
+
+        Map<String, Integer> distribuicao = new LinkedHashMap<>();
+        for (double nota = 0.5; nota <= 5.0; nota += 0.5) distribuicao.put(String.valueOf(nota), 0);
+        int comNota = 0;
+        int curtidas = 0;
+        double soma = 0;
+        for (Review review : ultimaPorPessoa.values()) {
+            if (review.isLiked()) curtidas++;
+            if (review.getRating() != null) {
+                comNota++;
+                soma += review.getRating();
+                distribuicao.merge(String.valueOf(review.getRating()), 1, Integer::sum);
+            }
+        }
+        Double media = comNota == 0 ? null : Math.round(soma / comNota * 10) / 10.0;
+        return new MovieStatsDTO(media, comNota, ultimaPorPessoa.size(), curtidas, distribuicao);
+    }
+
+    private static boolean maisRecente(Review a, Review b) {
+        int porData = Comparator.nullsFirst(Comparator.<LocalDate>naturalOrder())
+                .compare(a.getWatchedOn(), b.getWatchedOn());
+        return porData != 0 ? porData > 0 : a.getCreatedAt().isAfter(b.getCreatedAt());
+    }
+
+    // disponibilidade muda (entra e sai de catálogo), mas não de hora em hora
+    private static final Duration VALIDADE_PROVEDORES = Duration.ofHours(12);
+    private static final String PAIS = "BR";
+    private final Map<Long, ProvedoresEmCache> cacheProvedores = new ConcurrentHashMap<>();
+
+    private record ProvedoresEmCache(WatchProvidersDTO provedores, Instant em) {}
+
+    public WatchProvidersDTO ondeAssistir(Long id) {
+        Movie filme = movieRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Filme não encontrado. Id: " + id));
+        ProvedoresEmCache emCache = cacheProvedores.get(filme.getTmdbId());
+        if (emCache != null && emCache.em().plus(VALIDADE_PROVEDORES).isAfter(Instant.now())) {
+            return emCache.provedores();
+        }
+
+        TmdbWatchProvidersDTO.Country brasil = tmdbClient.buscarOndeAssistir(filme.getTmdbId()).getResults().get(PAIS);
+        WatchProvidersDTO resultado = brasil == null
+                ? WatchProvidersDTO.vazio()
+                : new WatchProvidersDTO(
+                        brasil.getLink(),
+                        provedores(brasil.getFlatrate()),
+                        provedores(concat(brasil.getFree(), brasil.getAds())),
+                        provedores(brasil.getRent()),
+                        provedores(brasil.getBuy()));
+        cacheProvedores.put(filme.getTmdbId(), new ProvedoresEmCache(resultado, Instant.now()));
+        return resultado;
+    }
+
+    private static List<TmdbWatchProvidersDTO.Provider> concat(List<TmdbWatchProvidersDTO.Provider> a,
+                                                             List<TmdbWatchProvidersDTO.Provider> b) {
+        List<TmdbWatchProvidersDTO.Provider> todos = new ArrayList<>(a);
+        todos.addAll(b);
+        return todos;
+    }
+
+    // na ordem de destaque do JustWatch, sem repetir o mesmo serviço
+    private static List<WatchProvidersDTO.Provider> provedores(List<TmdbWatchProvidersDTO.Provider> lista) {
+        List<TmdbWatchProvidersDTO.Provider> ordenada = new ArrayList<>(lista);
+        ordenada.sort(Comparator.comparingInt(TmdbWatchProvidersDTO.Provider::getDisplayPriority));
+        Map<Long, WatchProvidersDTO.Provider> unicos = new LinkedHashMap<>();
+        for (TmdbWatchProvidersDTO.Provider p : ordenada) {
+            unicos.putIfAbsent(p.getProviderId(), new WatchProvidersDTO.Provider(p.getProviderId(), p.getProviderName(), p.getLogoPath()));
+        }
+        return new ArrayList<>(unicos.values());
     }
 }
