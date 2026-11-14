@@ -60,12 +60,12 @@ public class PersonService {
         Set<Long> tmdbIds = new HashSet<>();
         for (TmdbPersonCreditDTO c : dirigidos) tmdbIds.add(c.getId());
         for (TmdbPersonCreditDTO c : atuados) tmdbIds.add(c.getId());
-        Map<Long, Long> idLocalPorTmdbId = new HashMap<>();
+        Map<Long, Movie> localPorTmdbId = new HashMap<>();
         for (Movie filme : movieRepository.findByTmdbIdIn(tmdbIds)) {
-            idLocalPorTmdbId.put(filme.getTmdbId(), filme.getId());
+            localPorTmdbId.put(filme.getTmdbId(), filme);
         }
 
-        return new PersonDetailDTO(pessoa, paraDTO(dirigidos, idLocalPorTmdbId), paraDTO(atuados, idLocalPorTmdbId));
+        return new PersonDetailDTO(pessoa, paraDTO(dirigidos, localPorTmdbId), paraDTO(atuados, localPorTmdbId));
     }
 
     /**
@@ -117,10 +117,10 @@ public class PersonService {
         return p.contains("self") || p.contains("himself") || p.contains("herself") || p.contains("ele mesmo") || p.contains("ela mesma");
     }
 
-    private List<PersonCreditDTO> paraDTO(List<TmdbPersonCreditDTO> creditos, Map<Long, Long> idLocalPorTmdbId) {
+    private List<PersonCreditDTO> paraDTO(List<TmdbPersonCreditDTO> creditos, Map<Long, Movie> localPorTmdbId) {
         List<PersonCreditDTO> dtos = new ArrayList<>();
         for (TmdbPersonCreditDTO credito : creditos) {
-            dtos.add(new PersonCreditDTO(credito, idLocalPorTmdbId.get(credito.getId())));
+            dtos.add(new PersonCreditDTO(credito, localPorTmdbId.get(credito.getId())));
         }
         return dtos;
     }

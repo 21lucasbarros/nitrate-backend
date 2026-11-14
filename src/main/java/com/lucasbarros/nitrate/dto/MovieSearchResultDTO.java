@@ -1,10 +1,12 @@
 package com.lucasbarros.nitrate.dto;
 
+import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieSummaryDTO;
 
-// resultado da busca no TMDB. `id` só vem preenchido se o filme já foi importado pro nosso banco
+// resultado da busca no TMDB. `id` e `slug` só vêm se o filme já foi importado pro nosso banco
 public class MovieSearchResultDTO {
     private Long id;
+    private String slug;
     private Long tmdbId;
     private String title;
     private Integer releaseYear;
@@ -12,8 +14,9 @@ public class MovieSearchResultDTO {
     private String overview;
     private Double rating;
 
-    public MovieSearchResultDTO(TmdbMovieSummaryDTO resumo, Long id) {
-        this.id = id;
+    public MovieSearchResultDTO(TmdbMovieSummaryDTO resumo, Movie local) {
+        this.id = local == null ? null : local.getId();
+        this.slug = local == null ? null : local.getSlug();
         this.tmdbId = resumo.getId();
         this.title = resumo.getTitle();
         this.posterPath = resumo.getPosterPath();
@@ -24,6 +27,7 @@ public class MovieSearchResultDTO {
     }
 
     public Long getId() { return id; }
+    public String getSlug() { return slug; }
     public Long getTmdbId() { return tmdbId; }
     public String getTitle() { return title; }
     public Integer getReleaseYear() { return releaseYear; }

@@ -8,8 +8,7 @@ import java.time.LocalDate;
 import java.util.Objects;
 
 @Entity
-@Table(name = "tb_review",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "movie_id"}))
+@Table(name = "tb_review") // várias reviews do mesmo filme = reassistido (ver `rewatch`)
 public class Review implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -33,6 +32,10 @@ public class Review implements Serializable {
     private String text;
 
     private boolean liked;
+
+    // já tinha assistido antes (no Nitrate ou fora dele)
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean rewatch;
 
     // o default no banco preenche as reviews que já existiam quando a coluna foi criada
     @Column(nullable = false, columnDefinition = "boolean not null default false")
@@ -69,6 +72,9 @@ public class Review implements Serializable {
 
     public boolean isLiked() { return liked; }
     public void setLiked(boolean liked) { this.liked = liked; }
+
+    public boolean isRewatch() { return rewatch; }
+    public void setRewatch(boolean rewatch) { this.rewatch = rewatch; }
 
     public boolean isSpoiler() { return spoiler; }
     public void setSpoiler(boolean spoiler) { this.spoiler = spoiler; }

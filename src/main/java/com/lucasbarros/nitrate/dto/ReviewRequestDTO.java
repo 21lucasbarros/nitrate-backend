@@ -8,6 +8,7 @@ public class ReviewRequestDTO {
     private String text;
     private boolean liked;
     private boolean spoiler;
+    private boolean rewatch;
     private LocalDate watchedOn;
 
     public Long getMovieId() { return movieId; }
@@ -18,6 +19,8 @@ public class ReviewRequestDTO {
     public void setText(String text) { this.text = text; }
     public boolean isLiked() { return liked; }
     public void setLiked(boolean liked) { this.liked = liked; }
+    public boolean isRewatch() { return rewatch; }
+    public void setRewatch(boolean rewatch) { this.rewatch = rewatch; }
     public boolean isSpoiler() { return spoiler; }
     public void setSpoiler(boolean spoiler) { this.spoiler = spoiler; }
     public LocalDate getWatchedOn() { return watchedOn; }

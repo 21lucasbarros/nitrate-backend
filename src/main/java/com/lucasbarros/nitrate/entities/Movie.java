@@ -52,6 +52,10 @@ public class Movie implements Serializable {
 
     private String posterPath;
 
+    // endereço legível: "superman-2025" (ver MovieSlugService)
+    @Column(unique = true)
+    private String slug;
+
     // já buscamos os filmes do diretor e do elenco principal deste filme? (ver GraphExpansionService)
     @Column(nullable = false, columnDefinition = "boolean not null default false")
     private boolean grafoExpandido;
@@ -153,6 +157,14 @@ public class Movie implements Serializable {
 
     public void setPosterPath(String posterPath) {
         this.posterPath = posterPath;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
     }
 
     public boolean isGrafoExpandido() {

@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +17,7 @@ import java.util.List;
  * então rodar de novo a cada inicialização não muda nada.
  */
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE) // o banco precisa estar ajustado antes de qualquer outro passo de inicialização
 public class SchemaAdjustments implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SchemaAdjustments.class);
@@ -34,6 +37,16 @@ public class SchemaAdjustments implements ApplicationRunner {
         if (!tipo.isEmpty() && !"text".equals(tipo.get(0))) {
             jdbc.execute("alter table tb_review alter column text type text");
             log.info("tb_review.text convertida de {} para text", tipo.get(0));
+        }
+
+        // tb_review tinha unique(user_id, movie_id); agora pode haver várias reviews do mesmo
+        // filme (reassistidos). A tabela não tem outra restrição única, então removemos todas.
+        List<String> unicas = jdbc.queryForList(
+                "select conname from pg_constraint where conrelid = 'tb_review'::regclass and contype = 'u'",
+                String.class);
+        for (String nome : unicas) {
+            jdbc.execute("alter table tb_review drop constraint \"" + nome + "\"");
+            log.info("restrição única {} removida de tb_review (reviews de reassistidos)", nome);
         }
     }
 }

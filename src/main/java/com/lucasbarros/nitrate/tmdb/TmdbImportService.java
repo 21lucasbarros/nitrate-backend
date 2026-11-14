@@ -2,6 +2,7 @@ package com.lucasbarros.nitrate.tmdb;
 
 import com.lucasbarros.nitrate.entities.*;
 import com.lucasbarros.nitrate.repositories.*;
+import com.lucasbarros.nitrate.services.MovieSlugService;
 import com.lucasbarros.nitrate.tmdb.dto.*;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ public class TmdbImportService {
     @Autowired private ActorRepository actorRepository;
     @Autowired private GenreRepository genreRepository;
     @Autowired private FranchiseRepository franchiseRepository;
+    @Autowired private MovieSlugService movieSlugService;
 
     private Map<String, Director> diretoresCache = new Hashtable<>();
     private Map<String, Actor> atoresCache = new HashMap<>();
@@ -67,6 +69,7 @@ public class TmdbImportService {
         filme.setReleaseYear(extrairAno(detalhe.getReleaseDate()));
         filme.setDirector(diretor);
         filme.setFranchise(franquia);
+        movieSlugService.atribuir(filme);
 
         for (TmdbGenreDTO generoTmdb : detalhe.getGenres()) {
             filme.getGenres().add(obterOuCriarGenero(generoTmdb.getName()));

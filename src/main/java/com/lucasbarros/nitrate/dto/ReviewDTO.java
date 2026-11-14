@@ -13,6 +13,7 @@ public class ReviewDTO {
     private String text;
     private boolean liked;
     private boolean spoiler;
+    private boolean rewatch;
     private LocalDate watchedOn;
     private Instant createdAt;
 
@@ -24,6 +25,7 @@ public class ReviewDTO {
         text = entity.getText();
         liked = entity.isLiked();
         spoiler = entity.isSpoiler();
+        rewatch = entity.isRewatch();
         watchedOn = entity.getWatchedOn();
         createdAt = entity.getCreatedAt();
     }
@@ -34,6 +36,7 @@ public class ReviewDTO {
     public Double getRating() { return rating; }
     public String getText() { return text; }
     public boolean isLiked() { return liked; }
+    public boolean isRewatch() { return rewatch; }
     public boolean isSpoiler() { return spoiler; }
     public LocalDate getWatchedOn() { return watchedOn; }
     public Instant getCreatedAt() { return createdAt; }

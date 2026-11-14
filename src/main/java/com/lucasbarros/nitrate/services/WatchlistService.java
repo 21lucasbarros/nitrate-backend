@@ -36,7 +36,7 @@ public class WatchlistService {
     @Transactional
     public LetterboxdImportDTO.Status adicionarSeNaoAssistiu(User user, Long movieId, LocalDate adicionadoEm) {
         Movie filme = buscarFilme(movieId);
-        if (reviewRepository.findByUserAndMovie(user, filme).isPresent()) {
+        if (reviewRepository.existsByUserAndMovie(user, filme)) {
             return LetterboxdImportDTO.Status.ALREADY_WATCHED;
         }
         if (watchlistRepository.existsByUserAndMovie(user, filme)) {

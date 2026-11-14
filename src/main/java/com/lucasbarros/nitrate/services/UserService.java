@@ -41,7 +41,7 @@ public class UserService {
     public UserProfileDTO perfil(User user) {
         return new UserProfileDTO(
                 user,
-                reviewRepository.countByUser(user),
+                reviewRepository.countFilmesDistintos(user),
                 reviewRepository.countByUserAndTextIsNotNull(user),
                 reviewRepository.countByUserAndLikedTrue(user),
                 watchlistRepository.countByUser(user));
@@ -77,10 +77,11 @@ public class UserService {
     public MovieUserStateDTO estadoDoFilme(User user, Long movieId) {
         Movie filme = movieRepository.findById(movieId)
                 .orElseThrow(() -> new ResourceNotFoundException("Filme não encontrado. Id: " + movieId));
-        ReviewDTO review = reviewRepository.findByUserAndMovie(user, filme)
+        ReviewDTO review = reviewRepository.findFirstByUserAndMovieOrderByWatchedOnDescCreatedAtDesc(user, filme)
                 .map(ReviewDTO::new)
                 .orElse(null);
-        return new MovieUserStateDTO(review, watchlistRepository.existsByUserAndMovie(user, filme));
+        return new MovieUserStateDTO(review, reviewRepository.countByUserAndMovie(user, filme),
+                watchlistRepository.existsByUserAndMovie(user, filme));
     }
 
     private User buscarPorUsername(String username) {

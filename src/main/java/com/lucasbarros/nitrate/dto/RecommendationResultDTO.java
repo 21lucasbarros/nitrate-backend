@@ -11,6 +11,7 @@ public class RecommendationResultDTO implements Serializable {
     private Long movieId;
     private String title;
     private Integer releaseYear;
+    private String slug;
     private String posterPath;
     private Double score;
     private List<String> reasons;
@@ -22,6 +23,7 @@ public class RecommendationResultDTO implements Serializable {
         this.movieId = result.getMovie().getId();
         this.title = result.getMovie().getTitle();
         this.releaseYear = result.getMovie().getReleaseYear();
+        this.slug = result.getMovie().getSlug();
         this.posterPath = result.getMovie().getPosterPath();
         this.score = result.getScore();
         this.reasons = result.getReasons();
@@ -65,5 +67,9 @@ public class RecommendationResultDTO implements Serializable {
 
     public String getPosterPath() {
         return posterPath;
+    }
+
+    public String getSlug() {
+        return slug;
     }
 }

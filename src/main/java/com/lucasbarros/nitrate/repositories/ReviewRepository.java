@@ -25,8 +25,14 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @Query("select r.watchedOn from Review r where r.user = :user and r.watchedOn is not null")
     List<LocalDate> findDatasAssistidas(@Param("user") User user);
-    Optional<Review> findByUserAndMovie(User user, Movie movie);
-    long countByUser(User user);
+    // a review mais recente do filme (pode haver várias: reassistidos)
+    Optional<Review> findFirstByUserAndMovieOrderByWatchedOnDescCreatedAtDesc(User user, Movie movie);
+    boolean existsByUserAndMovie(User user, Movie movie);
+    long countByUserAndMovie(User user, Movie movie);
+
+    // filmes diferentes no diário (reassistir não conta duas vezes)
+    @Query("select count(distinct r.movie) from Review r where r.user = :user")
+    long countFilmesDistintos(@Param("user") User user);
     long countByUserAndTextIsNotNull(User user);
     long countByUserAndLikedTrue(User user);
 

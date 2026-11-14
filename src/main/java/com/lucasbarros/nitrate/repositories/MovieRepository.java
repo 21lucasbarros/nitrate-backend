@@ -14,6 +14,12 @@ import java.util.Optional;
 public interface MovieRepository extends JpaRepository<Movie, Long> {
     Optional<Movie> findByTmdbId(Long tmdbId);
     boolean existsByTmdbId(Long tmdbId);
+    Optional<Movie> findBySlug(String slug);
+    boolean existsBySlug(String slug);
+    List<Movie> findBySlugIsNull();
+
+    @Query("select m.slug from Movie m where m.slug is not null")
+    List<String> findAllSlugs();
     List<Movie> findByTmdbIdIn(Collection<Long> tmdbIds);
 
     // o grafo carrega o acervo em duas consultas: buscar gêneros e elenco juntos multiplicaria

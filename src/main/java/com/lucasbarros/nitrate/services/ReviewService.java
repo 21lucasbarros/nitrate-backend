@@ -8,7 +8,6 @@ import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.repositories.WatchlistRepository;
-import com.lucasbarros.nitrate.services.exceptions.ConflictException;
 import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,12 +39,11 @@ public class ReviewService {
         Movie filme = movieRepository.findById(request.getMovieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Filme não encontrado. Id: " + request.getMovieId()));
 
-        if (reviewRepository.findByUserAndMovie(user, filme).isPresent()) {
-            throw new ConflictException("Você já registrou esse filme. Edite a review existente.");
-        }
+        boolean jaAssistiu = reviewRepository.existsByUserAndMovie(user, filme);
 
         Review review = new Review(user, filme);
         aplicar(review, request);
+        if (jaAssistiu) review.setRewatch(true); // segunda review do mesmo filme é sempre reassistido
         review = reviewRepository.save(review);
 
         // assistiu, então sai da watchlist
@@ -64,7 +62,7 @@ public class ReviewService {
     public boolean criarSeNaoExistir(User user, Long movieId, ReviewRequestDTO request, LocalDate registradoEm) {
         Movie filme = movieRepository.findById(movieId)
                 .orElseThrow(() -> new ResourceNotFoundException("Filme não encontrado. Id: " + movieId));
-        if (reviewRepository.findByUserAndMovie(user, filme).isPresent()) {
+        if (reviewRepository.existsByUserAndMovie(user, filme)) {
             return false;
         }
 
@@ -157,6 +155,7 @@ public class ReviewService {
         review.setRating(nota);
         review.setText(texto);
         review.setLiked(request.isLiked());
+        review.setRewatch(request.isRewatch());
         // sem texto não há o que esconder
         review.setSpoiler(texto != null && request.isSpoiler());
         review.setWatchedOn(assistidoEm);

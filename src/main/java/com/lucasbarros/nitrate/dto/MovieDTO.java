@@ -17,6 +17,7 @@ public class MovieDTO implements Serializable {
     private String director;
     private String franchise;
     private List<String> genres = new ArrayList<>();
+    private String slug;
     private String posterPath;
     private String overview;
 
@@ -28,6 +29,7 @@ public class MovieDTO implements Serializable {
         title = entity.getTitle();
         releaseYear = entity.getReleaseYear();
         rating = entity.getRating();
+        slug = entity.getSlug();
         posterPath = entity.getPosterPath();
         overview = entity.getOverview();
 
@@ -112,5 +114,9 @@ public class MovieDTO implements Serializable {
 
     public void setOverview(String overview) {
         this.overview = overview;
+    }
+
+    public String getSlug() {
+        return slug;
     }
 }

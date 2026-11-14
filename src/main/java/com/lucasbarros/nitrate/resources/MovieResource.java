@@ -1,5 +1,6 @@
 package com.lucasbarros.nitrate.resources;
 
+import com.lucasbarros.nitrate.dto.MovieCreditsDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.MovieSearchResultDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
@@ -49,5 +50,15 @@ public class MovieResource {
     public MovieDTO obterPorTmdbId(@PathVariable Long tmdbId) {
         Long id = movieService.obterOuImportarId(tmdbId);
         return movieService.buscarPorId(id);
+    }
+
+    @GetMapping(value = "/slug/{slug}")
+    public MovieDTO buscarPorSlug(@PathVariable String slug) {
+        return movieService.buscarPorSlug(slug);
+    }
+
+    @GetMapping(value = "/{id}/credits")
+    public MovieCreditsDTO creditos(@PathVariable Long id) {
+        return movieService.creditos(id);
     }
 }
