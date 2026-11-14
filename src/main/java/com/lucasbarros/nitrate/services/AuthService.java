@@ -15,12 +15,15 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Service
 public class AuthService {
 
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-z0-9_]{3,20}$");
+    // nomes que são rotas de /users/... e não podem virar perfil
+    private static final Set<String> USERNAMES_RESERVADOS = Set.of("me", "search");
 
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordEncoder passwordEncoder;
@@ -39,7 +42,7 @@ public class AuthService {
             throw new EmailJaCadastradoException(request.getEmail());
         }
 
-        if (userRepository.existsByUsername(username)) {
+        if (USERNAMES_RESERVADOS.contains(username) || userRepository.existsByUsername(username)) {
             throw new UsernameJaCadastradoException(username);
         }
 
@@ -64,6 +67,7 @@ public class AuthService {
     }
 
     public boolean usernameDisponivel(String username) {
-        return !userRepository.existsByUsername(username.toLowerCase().trim());
+        String limpo = username.toLowerCase().trim();
+        return !USERNAMES_RESERVADOS.contains(limpo) && !userRepository.existsByUsername(limpo);
     }
 }

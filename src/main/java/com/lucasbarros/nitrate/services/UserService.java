@@ -31,20 +31,34 @@ public class UserService {
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private WatchlistRepository watchlistRepository;
     @Autowired private MovieRepository movieRepository;
+    @Autowired private SocialService socialService;
 
+    /** `quemVe`: usuário logado (ou nulo), para dizer se ele segue este perfil */
     @Transactional(readOnly = true)
-    public UserProfileDTO perfil(String username) {
-        return perfil(buscarPorUsername(username));
+    public UserProfileDTO perfil(String username, User quemVe) {
+        User user = buscarPorUsername(username);
+        Boolean segue = quemVe == null || quemVe.getId().equals(user.getId())
+                ? null
+                : socialService.segue(quemVe, user);
+        return perfil(user, segue);
     }
 
     @Transactional(readOnly = true)
     public UserProfileDTO perfil(User user) {
+        return perfil(user, null);
+    }
+
+    private UserProfileDTO perfil(User user, Boolean seguidoPorQuemVe) {
         return new UserProfileDTO(
                 user,
                 reviewRepository.countFilmesDistintos(user),
                 reviewRepository.countByUserAndTextIsNotNull(user),
                 reviewRepository.countByUserAndLikedTrue(user),
-                watchlistRepository.countByUser(user));
+                watchlistRepository.countByUser(user),
+                socialService.contarSeguidores(user),
+                socialService.contarSeguindo(user),
+                socialService.favoritos(user),
+                seguidoPorQuemVe);
     }
 
     private static final int TAMANHO_MAX_PAGINA = 60;

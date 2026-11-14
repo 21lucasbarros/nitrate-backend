@@ -2,6 +2,11 @@ package com.lucasbarros.nitrate.repositories;
 
 import com.lucasbarros.nitrate.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -9,4 +14,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
     boolean existsByEmail(String email);
     boolean existsByUsername(String username);
+
+    // busca por nome de usuário ou nome; quem começa com o termo vem antes
+    @Query("select u from User u where lower(u.username) like concat('%', :termo, '%') " +
+            "or lower(u.name) like concat('%', :termo, '%') " +
+            "order by case when lower(u.username) like concat(:termo, '%') then 0 " +
+            "when lower(u.name) like concat(:termo, '%') then 1 else 2 end, u.username")
+    List<User> pesquisar(@Param("termo") String termo, Pageable pageable);
 }
