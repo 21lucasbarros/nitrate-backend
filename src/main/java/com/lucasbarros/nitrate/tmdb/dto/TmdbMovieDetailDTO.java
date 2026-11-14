@@ -21,6 +21,11 @@ public class TmdbMovieDetailDTO {
     @JsonProperty("poster_path")
     private String posterPath;
 
+    @JsonProperty("backdrop_path")
+    private String backdropPath;
+
+    private String tagline;
+
     private List<TmdbGenreDTO> genres = new ArrayList<>();
 
     @JsonProperty("belongs_to_collection")
@@ -40,6 +45,10 @@ public class TmdbMovieDetailDTO {
     public void setVoteAverage(Double voteAverage) { this.voteAverage = voteAverage; }
     public String getPosterPath() { return posterPath; }
     public void setPosterPath(String posterPath) { this.posterPath = posterPath; }
+    public String getBackdropPath() { return backdropPath; }
+    public void setBackdropPath(String backdropPath) { this.backdropPath = backdropPath; }
+    public String getTagline() { return tagline; }
+    public void setTagline(String tagline) { this.tagline = tagline; }
     public List<TmdbGenreDTO> getGenres() { return genres; }
     public void setGenres(List<TmdbGenreDTO> genres) { this.genres = genres; }
     public TmdbCollectionDTO getBelongsToCollection() { return belongsToCollection; }

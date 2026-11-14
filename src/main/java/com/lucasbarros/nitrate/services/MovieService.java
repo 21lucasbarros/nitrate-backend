@@ -16,6 +16,7 @@ import com.lucasbarros.nitrate.tmdb.TmdbImportService;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbCastMemberDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbCreditsDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbCrewMemberDTO;
+import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieSummaryDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbWatchProvidersDTO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -127,7 +128,8 @@ public class MovieService {
             return emCache.creditos();
         }
 
-        TmdbCreditsDTO creditos = tmdbClient.buscarDetalhesComCreditos(filme.getTmdbId()).getCredits();
+        TmdbMovieDetailDTO detalhe = tmdbClient.buscarDetalhesComCreditos(filme.getTmdbId());
+        TmdbCreditsDTO creditos = detalhe.getCredits();
         List<MovieCreditsDTO.Person> direcao = new ArrayList<>();
         List<MovieCreditsDTO.Person> elenco = new ArrayList<>();
         if (creditos != null) {
@@ -142,7 +144,8 @@ public class MovieService {
                 elenco.add(new MovieCreditsDTO.Person(membro.getId(), membro.getName(), membro.getCharacter(), membro.getProfilePath()));
             }
         }
-        MovieCreditsDTO resultado = new MovieCreditsDTO(direcao, elenco);
+        String tagline = detalhe.getTagline() == null || detalhe.getTagline().isBlank() ? null : detalhe.getTagline();
+        MovieCreditsDTO resultado = new MovieCreditsDTO(direcao, elenco, detalhe.getBackdropPath(), tagline);
         cacheCreditos.put(filme.getTmdbId(), new CreditosEmCache(resultado, Instant.now()));
         return resultado;
     }
