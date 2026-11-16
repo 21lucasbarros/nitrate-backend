@@ -49,7 +49,11 @@ public class TmdbClient {
         return pesquisarFilmes(termo, null);
     }
 
-    /** com `ano`, só traz filmes lançados naquele ano (essencial para títulos repetidos) */
+    /**
+     * com `ano`, só traz filmes com alguma estreia naquele ano (essencial para títulos repetidos).
+     * `year` considera qualquer data de lançamento (festival, outro país); `primary_release_year`
+     * só a principal, e deixaria de fora filmes como Obsession (2025 no festival, 2026 no circuito).
+     */
     public TmdbPopularResponseDTO pesquisarFilmes(String termo, Integer ano) {
         return restClient().get()
                 .uri(uriBuilder -> {
@@ -59,7 +63,7 @@ public class TmdbClient {
                             .queryParam("language", "pt-BR")
                             .queryParam("include_adult", false)
                             .queryParam("query", termo);
-                    if (ano != null) uriBuilder.queryParam("primary_release_year", ano);
+                    if (ano != null) uriBuilder.queryParam("year", ano);
                     return uriBuilder.build();
                 })
                 .retrieve()

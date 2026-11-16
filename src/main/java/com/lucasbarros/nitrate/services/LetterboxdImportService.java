@@ -12,8 +12,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Importa um lote de filmes do export do Letterboxd. O export não traz o id do TMDB, então
@@ -78,21 +81,47 @@ public class LetterboxdImportService {
     }
 
     /**
-     * Primeiro procura no ano exato. A data de lançamento varia por país (festival vs.
-     * estreia), então sem resultado aceitamos uma diferença de 1 ano.
+     * Primeiro procura filmes com alguma estreia no ano do Letterboxd (que costuma usar a
+     * primeira exibição, mesmo em festival). Sem resultado, aceita 1 ano de diferença.
      */
     private TmdbMovieSummaryDTO encontrarNoTmdb(String nome, Integer ano) {
         if (ano != null) {
-            List<TmdbMovieSummaryDTO> noAno = tmdbClient.pesquisarFilmes(nome, ano).getResults();
-            if (!noAno.isEmpty()) return noAno.get(0);
+            TmdbMovieSummaryDTO noAno = melhorCandidato(nome, tmdbClient.pesquisarFilmes(nome, ano).getResults());
+            if (noAno != null) return noAno;
         }
-        for (TmdbMovieSummaryDTO resultado : tmdbClient.pesquisarFilmes(nome).getResults()) {
-            Integer anoResultado = anoDe(resultado.getReleaseDate());
-            if (ano == null || (anoResultado != null && Math.abs(anoResultado - ano) <= 1)) {
-                return resultado;
-            }
-        }
-        return null;
+        List<TmdbMovieSummaryDTO> proximos = tmdbClient.pesquisarFilmes(nome).getResults().stream()
+                .filter(r -> {
+                    Integer anoResultado = anoDe(r.getReleaseDate());
+                    return ano == null || (anoResultado != null && Math.abs(anoResultado - ano) <= 1);
+                })
+                .toList();
+        return melhorCandidato(nome, proximos);
+    }
+
+    /**
+     * Títulos repetidos são comuns ("Obsession" tem dezenas). O primeiro resultado do TMDB
+     * pode ser um curta obscuro, então preferimos quem tem exatamente o título procurado
+     * (traduzido ou original) e, entre esses, o mais votado. Empate fica com a ordem do TMDB.
+     */
+    static TmdbMovieSummaryDTO melhorCandidato(String nome, List<TmdbMovieSummaryDTO> candidatos) {
+        String procurado = normalizar(nome);
+        return candidatos.stream()
+                .max(Comparator
+                        .comparing((TmdbMovieSummaryDTO r) ->
+                                procurado.equals(normalizar(r.getTitle())) || procurado.equals(normalizar(r.getOriginalTitle())))
+                        .thenComparingInt(TmdbMovieSummaryDTO::getVoteCount)
+                        // max() fica com o último empatado; o índice negativo mantém o primeiro do TMDB
+                        .thenComparingInt(r -> -candidatos.indexOf(r)))
+                .orElse(null);
+    }
+
+    /** "Amélie!" e "amelie" contam como o mesmo título */
+    private static String normalizar(String titulo) {
+        if (titulo == null) return "";
+        return Normalizer.normalize(titulo, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "");
     }
 
     private Integer anoDe(String data) {

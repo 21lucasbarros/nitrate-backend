@@ -18,6 +18,18 @@ public class TmdbMovieSummaryDTO {
     @JsonProperty("vote_average")
     private Double voteAverage;
 
+    // título na língua original (o `title` vem traduzido para pt-BR)
+    @JsonProperty("original_title")
+    private String originalTitle;
+
+    @JsonProperty("vote_count")
+    private int voteCount;
+
+    public String getOriginalTitle() { return originalTitle; }
+    public void setOriginalTitle(String originalTitle) { this.originalTitle = originalTitle; }
+    public int getVoteCount() { return voteCount; }
+    public void setVoteCount(int voteCount) { this.voteCount = voteCount; }
+
     public Long getId() {
         return id;
     }
