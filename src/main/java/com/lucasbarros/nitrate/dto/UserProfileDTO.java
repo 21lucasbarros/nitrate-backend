@@ -9,6 +9,9 @@ public class UserProfileDTO {
     private String username;
     private String name;
     private Instant createdAt;
+    private String bio;
+    private String twitter;
+    private String instagram;
     private long filmsCount;
     private long reviewsCount;
     private long likesCount;
@@ -24,6 +27,9 @@ public class UserProfileDTO {
         this.username = user.getUsername();
         this.name = user.getName();
         this.createdAt = user.getCreatedAt();
+        this.bio = user.getBio();
+        this.twitter = user.getTwitter();
+        this.instagram = user.getInstagram();
         this.filmsCount = filmsCount;
         this.reviewsCount = reviewsCount;
         this.likesCount = likesCount;
@@ -37,6 +43,9 @@ public class UserProfileDTO {
     public String getUsername() { return username; }
     public String getName() { return name; }
     public Instant getCreatedAt() { return createdAt; }
+    public String getBio() { return bio; }
+    public String getTwitter() { return twitter; }
+    public String getInstagram() { return instagram; }
     public long getFilmsCount() { return filmsCount; }
     public long getReviewsCount() { return reviewsCount; }
     public long getLikesCount() { return likesCount; }

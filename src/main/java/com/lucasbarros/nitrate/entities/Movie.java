@@ -5,6 +5,7 @@ import org.hibernate.annotations.BatchSize;
 
 import java.io.Serializable;
 import java.security.PrivateKey;
+import java.time.LocalDate;
 import java.util.*;
 
 @Entity
@@ -59,6 +60,14 @@ public class Movie implements Serializable {
     // já buscamos os filmes do diretor e do elenco principal deste filme? (ver GraphExpansionService)
     @Column(nullable = false, columnDefinition = "boolean not null default false")
     private boolean grafoExpandido;
+
+    // estreia nos cinemas do Brasil (ou a estreia mundial, se o TMDB não tiver a data daqui)
+    private LocalDate releaseDate;
+
+    // Radar de Estreias (ver ReleaseRadarService): o que a última verificação encontrou.
+    // nulo = nunca verificado; só a mudança de false para true gera aviso
+    private Boolean radarNosCinemas;
+    private Boolean radarNoStreaming;
 
     public Movie() {
     }
@@ -173,6 +182,30 @@ public class Movie implements Serializable {
 
     public void setGrafoExpandido(boolean grafoExpandido) {
         this.grafoExpandido = grafoExpandido;
+    }
+
+    public LocalDate getReleaseDate() {
+        return releaseDate;
+    }
+
+    public void setReleaseDate(LocalDate releaseDate) {
+        this.releaseDate = releaseDate;
+    }
+
+    public Boolean getRadarNosCinemas() {
+        return radarNosCinemas;
+    }
+
+    public void setRadarNosCinemas(Boolean radarNosCinemas) {
+        this.radarNosCinemas = radarNosCinemas;
+    }
+
+    public Boolean getRadarNoStreaming() {
+        return radarNoStreaming;
+    }
+
+    public void setRadarNoStreaming(Boolean radarNoStreaming) {
+        this.radarNoStreaming = radarNoStreaming;
     }
 
     public MovieCast findCastMember(String actorName) {

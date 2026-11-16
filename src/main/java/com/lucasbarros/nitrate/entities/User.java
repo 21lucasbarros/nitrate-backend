@@ -30,6 +30,16 @@ public class User implements Serializable {
 
     private Instant createdAt = Instant.now();
 
+    @Column(length = 300)
+    private String bio;
+
+    // só o @ (sem URL): o link é montado no front, então ninguém consegue apontar para outro site
+    @Column(length = 15)
+    private String twitter;
+
+    @Column(length = 30)
+    private String instagram;
+
     public User() {
     }
 
@@ -57,6 +67,15 @@ public class User implements Serializable {
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
+
+    public String getTwitter() { return twitter; }
+    public void setTwitter(String twitter) { this.twitter = twitter; }
+
+    public String getInstagram() { return instagram; }
+    public void setInstagram(String instagram) { this.instagram = instagram; }
 
     @Override
     public boolean equals(Object o) {

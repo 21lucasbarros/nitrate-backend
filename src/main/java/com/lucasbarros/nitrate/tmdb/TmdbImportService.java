@@ -8,6 +8,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
@@ -67,6 +69,7 @@ public class TmdbImportService {
         filme.setPosterPath(detalhe.getPosterPath());
         filme.setRating(detalhe.getVoteAverage());
         filme.setReleaseYear(extrairAno(detalhe.getReleaseDate()));
+        filme.setReleaseDate(extrairData(detalhe.getReleaseDate()));
         filme.setDirector(diretor);
         filme.setFranchise(franquia);
         movieSlugService.atribuir(filme);
@@ -99,6 +102,16 @@ public class TmdbImportService {
     private Integer extrairAno(String releaseDate) {
         if (releaseDate == null || releaseDate.length() < 4) return null;
         return Integer.parseInt(releaseDate.substring(0, 4));
+    }
+
+    /** "2026-05-01" do TMDB; vazio ou fora do formato = sem data (filme ainda sem estreia marcada) */
+    public static LocalDate extrairData(String releaseDate) {
+        if (releaseDate == null || releaseDate.length() < 10) return null;
+        try {
+            return LocalDate.parse(releaseDate.substring(0, 10));
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     private void adicionarElenco(Movie filme, TmdbMovieDetailDTO detalhe) {

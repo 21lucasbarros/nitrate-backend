@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonSearchResponseDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPopularResponseDTO;
+import com.lucasbarros.nitrate.tmdb.dto.TmdbReleaseDatesDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbWatchProvidersDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -88,6 +89,16 @@ public class TmdbClient {
                         .build(personId))
                 .retrieve()
                 .body(TmdbPersonDetailDTO.class);
+    }
+
+    public TmdbReleaseDatesDTO buscarDatasDeLancamento(Long tmdbId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/movie/{id}/release_dates")
+                        .queryParam("api_key", properties.getApiKey())
+                        .build(tmdbId))
+                .retrieve()
+                .body(TmdbReleaseDatesDTO.class);
     }
 
     public TmdbWatchProvidersDTO buscarOndeAssistir(Long tmdbId) {

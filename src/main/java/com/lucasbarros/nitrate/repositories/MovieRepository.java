@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -35,4 +36,12 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
     @Transactional
     @Query("update Movie m set m.grafoExpandido = true where m.id = :id")
     void marcarGrafoExpandido(@Param("id") Long id);
+
+    // Radar de Estreias: grava só o que a verificação encontrou, sem regravar o filme inteiro
+    @Modifying
+    @Transactional
+    @Query("update Movie m set m.releaseDate = :estreia, m.radarNosCinemas = :nosCinemas, " +
+            "m.radarNoStreaming = :noStreaming where m.id = :id")
+    void atualizarRadar(@Param("id") Long id, @Param("estreia") LocalDate estreia,
+                        @Param("nosCinemas") boolean nosCinemas, @Param("noStreaming") boolean noStreaming);
 }

@@ -6,6 +6,7 @@ import com.lucasbarros.nitrate.entities.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -45,4 +46,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("select distinct r.movie.id from Review r " +
             "where (r.liked = true or r.rating >= :notaMinima) and r.movie.grafoExpandido = false")
     List<Long> findIdsDeSementesPendentes(@Param("notaMinima") double notaMinima);
+
+    @Modifying
+    @Query("delete from Review r where r.user = :user")
+    void deleteAllByUser(@Param("user") User user);
 }

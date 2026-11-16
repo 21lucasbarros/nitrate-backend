@@ -1,9 +1,13 @@
 package com.lucasbarros.nitrate.resources;
 
+import com.lucasbarros.nitrate.dto.AccountDeletionDTO;
+import com.lucasbarros.nitrate.dto.AccountExportDTO;
 import com.lucasbarros.nitrate.dto.FavoritesRequestDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.MovieUserStateDTO;
+import com.lucasbarros.nitrate.dto.NotificationDTO;
 import com.lucasbarros.nitrate.dto.PageDTO;
+import com.lucasbarros.nitrate.dto.ProfileUpdateDTO;
 import com.lucasbarros.nitrate.dto.RecommendationResultDTO;
 import com.lucasbarros.nitrate.dto.RetrospectiveDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
@@ -11,6 +15,8 @@ import com.lucasbarros.nitrate.dto.UserProfileDTO;
 import com.lucasbarros.nitrate.dto.UserSummaryDTO;
 import com.lucasbarros.nitrate.dto.WatchlistItemDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
+import com.lucasbarros.nitrate.services.AccountService;
+import com.lucasbarros.nitrate.services.NotificationService;
 import com.lucasbarros.nitrate.services.RecommendationService;
 import com.lucasbarros.nitrate.services.RetrospectiveService;
 import com.lucasbarros.nitrate.services.SocialService;
@@ -21,6 +27,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -38,9 +45,50 @@ public class UserResource {
     @Autowired
     private SocialService socialService;
 
+    @Autowired
+    private AccountService accountService;
+
+    @Autowired
+    private NotificationService notificationService;
+
     @GetMapping("/me")
     public UserProfileDTO me(@AuthenticationPrincipal CustomUserDetails principal) {
         return userService.perfil(principal.getUser());
+    }
+
+    @PutMapping("/me/profile")
+    public UserProfileDTO atualizarPerfil(@AuthenticationPrincipal CustomUserDetails principal,
+                                          @RequestBody ProfileUpdateDTO request) {
+        return accountService.atualizarPerfil(principal.getUser(), request);
+    }
+
+    // LGPD: cópia dos dados (acesso/portabilidade) e exclusão definitiva da conta
+    @GetMapping("/me/export")
+    public AccountExportDTO exportar(@AuthenticationPrincipal CustomUserDetails principal) {
+        return accountService.exportar(principal.getUser());
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> excluirConta(@AuthenticationPrincipal CustomUserDetails principal,
+                                             @RequestBody AccountDeletionDTO request) {
+        accountService.excluirConta(principal.getUser(), request.password());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/me/notifications")
+    public List<NotificationDTO> notificacoes(@AuthenticationPrincipal CustomUserDetails principal) {
+        return notificationService.listar(principal.getUser());
+    }
+
+    @GetMapping("/me/notifications/unread-count")
+    public Map<String, Long> notificacoesNaoLidas(@AuthenticationPrincipal CustomUserDetails principal) {
+        return Map.of("count", notificationService.naoLidas(principal.getUser()));
+    }
+
+    @PostMapping("/me/notifications/read")
+    public ResponseEntity<Void> marcarNotificacoesComoLidas(@AuthenticationPrincipal CustomUserDetails principal) {
+        notificationService.marcarTodasComoLidas(principal.getUser());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me/recommendations")
