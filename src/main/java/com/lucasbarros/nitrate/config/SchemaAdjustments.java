@@ -45,7 +45,9 @@ public class SchemaAdjustments implements ApplicationRunner {
                 "select conname from pg_constraint where conrelid = 'tb_review'::regclass and contype = 'u'",
                 String.class);
         for (String nome : unicas) {
-            jdbc.execute("alter table tb_review drop constraint \"" + nome + "\"");
+            // o nome vem do catálogo do Postgres, não do usuário; mesmo assim, aspas dobradas
+            // garantem que ele nunca saia do identificador
+            jdbc.execute("alter table tb_review drop constraint \"" + nome.replace("\"", "\"\"") + "\"");
             log.info("restrição única {} removida de tb_review (reviews de reassistidos)", nome);
         }
     }

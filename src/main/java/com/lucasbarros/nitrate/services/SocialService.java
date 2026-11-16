@@ -29,6 +29,7 @@ public class SocialService {
     public static final int MAX_FAVORITOS = 5;
     private static final int FEED_MAX = 30;
     private static final int BUSCA_MAX = 10;
+    private static final int BUSCA_TERMO_MAX = 50;
 
     @Autowired private UserRepository userRepository;
     @Autowired private FollowRepository followRepository;
@@ -85,8 +86,12 @@ public class SocialService {
     public List<UserSummaryDTO> pesquisarUsuarios(String termo) {
         String limpo = termo == null ? "" : termo.toLowerCase().trim().replaceFirst("^@", "");
         if (limpo.length() < 2) return List.of();
+        if (limpo.length() > BUSCA_TERMO_MAX) limpo = limpo.substring(0, BUSCA_TERMO_MAX);
+        // o termo já vai como parâmetro (sem SQL injection), mas % e _ ainda seriam curingas do LIKE:
+        // "%" listaria todo mundo e "_" casaria qualquer letra. Escapados, valem como texto literal.
+        String literal = limpo.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
         List<UserSummaryDTO> dtos = new ArrayList<>();
-        userRepository.pesquisar(limpo, PageRequest.of(0, BUSCA_MAX)).forEach(u -> dtos.add(new UserSummaryDTO(u)));
+        userRepository.pesquisar(literal, PageRequest.of(0, BUSCA_MAX)).forEach(u -> dtos.add(new UserSummaryDTO(u)));
         return dtos;
     }
 
