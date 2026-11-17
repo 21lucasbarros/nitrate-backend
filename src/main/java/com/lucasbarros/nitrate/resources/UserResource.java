@@ -3,7 +3,7 @@ package com.lucasbarros.nitrate.resources;
 import com.lucasbarros.nitrate.dto.AccountDeletionDTO;
 import com.lucasbarros.nitrate.dto.AccountExportDTO;
 import com.lucasbarros.nitrate.dto.FavoritesRequestDTO;
-import com.lucasbarros.nitrate.dto.FriendWatchlistItemDTO;
+import com.lucasbarros.nitrate.dto.ActivityPageDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.MovieListDTO;
 import com.lucasbarros.nitrate.dto.MovieUserStateDTO;
@@ -31,6 +31,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -133,22 +134,12 @@ public class UserResource {
         return movieListService.minhasListas(principal.getUser(), movieId);
     }
 
-    // página "Amigos": o que quem eu sigo assistiu (paginado), listou e guardou para ver
-    @GetMapping("/me/friends/activity")
-    public PageDTO<ReviewDTO> atividadeDosAmigos(@AuthenticationPrincipal CustomUserDetails principal,
-                                                 @RequestParam(defaultValue = "0") int page,
-                                                 @RequestParam(defaultValue = "24") int size) {
-        return friendsService.assistiram(principal.getUser(), page, size);
-    }
-
-    @GetMapping("/me/friends/lists")
-    public List<MovieListDTO> listasDosAmigos(@AuthenticationPrincipal CustomUserDetails principal) {
-        return friendsService.listas(principal.getUser());
-    }
-
-    @GetMapping("/me/friends/watchlist")
-    public List<FriendWatchlistItemDTO> watchlistDosAmigos(@AuthenticationPrincipal CustomUserDetails principal) {
-        return friendsService.watchlists(principal.getUser());
+    // página "Amigos": o feed de atividade meu e de quem eu sigo; `before` pede a próxima página
+    @GetMapping("/me/friends/feed")
+    public ActivityPageDTO feedDosAmigos(@AuthenticationPrincipal CustomUserDetails principal,
+                                         @RequestParam(required = false) Instant before,
+                                         @RequestParam(defaultValue = "30") int size) {
+        return friendsService.feed(principal.getUser(), before, size);
     }
 
     // quem avaliou os mesmos filmes com notas parecidas

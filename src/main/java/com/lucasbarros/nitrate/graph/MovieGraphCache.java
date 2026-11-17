@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Mantém o grafo em memória. Montar o grafo exige carregar o acervo inteiro (com elenco e
@@ -29,16 +30,29 @@ public class MovieGraphCache {
     private volatile MovieGraph grafo;
     private volatile Instant montadoEm;
 
+    // ReentrantLock e não synchronized: montar o grafo espera o banco, e um synchronized
+    // bloqueado prenderia a thread do sistema com virtual threads ligadas
+    private final ReentrantLock montagem = new ReentrantLock();
+
     @Transactional(readOnly = true)
-    public synchronized MovieGraph obter() {
-        if (grafo == null || montadoEm.plus(VALIDADE).isBefore(Instant.now())) {
-            List<Movie> acervo = movieRepository.findAllParaGrafo();
-            // mesma transação: o elenco é preenchido nas mesmas instâncias de `acervo`
-            movieRepository.carregarElenco(acervo);
-            grafo = new MovieGraph(acervo);
-            montadoEm = Instant.now();
+    public MovieGraph obter() {
+        MovieGraph atual = grafo;
+        if (atual != null && montadoEm.plus(VALIDADE).isAfter(Instant.now())) {
+            return atual; // caminho comum: o grafo está pronto, ninguém espera a trava
         }
-        return grafo;
+        montagem.lock();
+        try {
+            if (grafo == null || montadoEm.plus(VALIDADE).isBefore(Instant.now())) {
+                List<Movie> acervo = movieRepository.findAllParaGrafo();
+                // mesma transação: o elenco é preenchido nas mesmas instâncias de `acervo`
+                movieRepository.carregarElenco(acervo);
+                montadoEm = Instant.now();
+                grafo = new MovieGraph(acervo);
+            }
+            return grafo;
+        } finally {
+            montagem.unlock();
+        }
     }
 
     /** chamar depois de importar filmes; o próximo obter() remonta o grafo */

@@ -31,6 +31,7 @@ public class ReviewService {
     @Autowired private WatchlistRepository watchlistRepository;
     @Autowired private GraphExpansionService graphExpansionService;
     @Autowired private ReviewSocialService reviewSocialService;
+    @Autowired private RecommendationService recommendationService;
 
     @Transactional
     public ReviewDTO criar(User user, ReviewRequestDTO request) {
@@ -51,6 +52,7 @@ public class ReviewService {
         watchlistRepository.findByUserAndMovie(user, filme).ifPresent(watchlistRepository::delete);
 
         expandirGrafoSeGostou(review);
+        recommendationService.invalidar(user.getId());
         return new ReviewDTO(review);
     }
 
@@ -76,6 +78,7 @@ public class ReviewService {
         }
         reviewRepository.save(review);
         watchlistRepository.findByUserAndMovie(user, filme).ifPresent(watchlistRepository::delete);
+        recommendationService.invalidar(user.getId());
         return true;
     }
 
@@ -85,6 +88,7 @@ public class ReviewService {
         aplicar(review, request);
         review.setUpdatedAt(Instant.now());
         expandirGrafoSeGostou(review);
+        recommendationService.invalidar(user.getId());
         return new ReviewDTO(review);
     }
 
@@ -93,6 +97,7 @@ public class ReviewService {
         Review review = buscarDoUsuario(user, id);
         reviewSocialService.limparReview(review);
         reviewRepository.delete(review);
+        recommendationService.invalidar(user.getId());
     }
 
     @Transactional(readOnly = true)

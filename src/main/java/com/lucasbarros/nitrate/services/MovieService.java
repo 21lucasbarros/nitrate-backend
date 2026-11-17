@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.dto.MovieCreditsDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.MovieSearchResultDTO;
 import com.lucasbarros.nitrate.dto.MovieStatsDTO;
+import com.lucasbarros.nitrate.dto.PageDTO;
 import com.lucasbarros.nitrate.dto.WatchProvidersDTO;
 import com.lucasbarros.nitrate.graph.MovieGraphCache;
 import com.lucasbarros.nitrate.entities.Movie;
@@ -21,6 +22,7 @@ import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieSummaryDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbWatchProvidersDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,10 +36,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class MovieService {
     private static final int TERMO_MIN = 2;
+    private static final int CATALOGO_PAGINA_MAX = 60;
     private static final int COMUNIDADE_MAX = 12;
     private static final int COMUNIDADE_MINIMO = 6; // menos que isso em alta: usa o histórico todo
     private static final long EM_ALTA_DIAS = 30;
@@ -45,6 +49,8 @@ public class MovieService {
 
     @Autowired
     private MovieRepository movieRepository;
+
+    private final ReentrantLock importacao = new ReentrantLock();
 
     @Autowired
     private TmdbClient tmdbClient;
@@ -100,6 +106,14 @@ public class MovieService {
         return dtos;
     }
 
+    /** o catálogo em páginas, na ordem em que os filmes entraram no Nitrate */
+    @Transactional(readOnly = true)
+    public PageDTO<MovieDTO> catalogo(int pagina, int tamanho) {
+        PageRequest pageRequest = PageRequest.of(Math.max(0, pagina), Math.min(Math.max(1, tamanho), CATALOGO_PAGINA_MAX),
+                Sort.by("id"));
+        return PageDTO.of(movieRepository.findAll(pageRequest), MovieDTO::new);
+    }
+
     @Transactional(readOnly = true)
     public MovieDTO buscarPorId(Long id) {
         Movie filme = movieRepository.findById(id)
@@ -132,15 +146,22 @@ public class MovieService {
         return resultados;
     }
 
-    // synchronized: duas requisições simultâneas para o mesmo filme não podem importar em dobro
+    // trava: duas requisições simultâneas para o mesmo filme não podem importar em dobro
     // (o tmdbId é único). A importação roda e faz commit na sua própria transação.
-    public synchronized Long obterOuImportarId(Long tmdbId) {
-        boolean jaExistia = movieRepository.existsByTmdbId(tmdbId);
-        Long id = tmdbImportService.obterOuImportar(tmdbId).getId();
-        if (!jaExistia) {
-            graphCache.invalidar(); // filme novo no acervo: o grafo precisa incluí-lo
+    // ReentrantLock e não synchronized: com virtual threads, um synchronized que espera a rede
+    // (a chamada ao TMDB) prende a thread do sistema e pode travar o servidor inteiro.
+    public Long obterOuImportarId(Long tmdbId) {
+        importacao.lock();
+        try {
+            boolean jaExistia = movieRepository.existsByTmdbId(tmdbId);
+            Long id = tmdbImportService.obterOuImportar(tmdbId).getId();
+            if (!jaExistia) {
+                graphCache.invalidar(); // filme novo no acervo: o grafo precisa incluí-lo
+            }
+            return id;
+        } finally {
+            importacao.unlock();
         }
-        return id;
     }
 
     @Transactional(readOnly = true)

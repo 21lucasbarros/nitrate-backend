@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.dto.MovieCreditsDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.MovieSearchResultDTO;
 import com.lucasbarros.nitrate.dto.MovieStatsDTO;
+import com.lucasbarros.nitrate.dto.PageDTO;
 import com.lucasbarros.nitrate.dto.WatchProvidersDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
 import com.lucasbarros.nitrate.services.MovieService;
@@ -27,9 +28,18 @@ public class MovieResource {
     @Autowired
     private ReviewService reviewService;
 
+    // o acervo inteiro de uma vez: pesado e crescendo todo dia. Fica só para o front antigo
+    // enquanto o novo (que usa /movies/catalog) não estiver no ar; depois pode sair.
+    @Deprecated
     @GetMapping
     public List<MovieDTO> buscarTodos() {
         return movieService.buscarTodos();
+    }
+
+    @GetMapping(value = "/catalog")
+    public PageDTO<MovieDTO> catalogo(@RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "48") int size) {
+        return movieService.catalogo(page, size);
     }
 
     // descoberta pela comunidade (literais: têm prioridade sobre /{id})

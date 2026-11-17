@@ -15,18 +15,26 @@ import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class RecommendationService {
     private static final int TOP_N_PADRAO = 5;
     private static final int TOP_N_USUARIO = 12;
     private static final double NOTA_MINIMA_SEMENTE = 3.5;
+    private static final Duration VALIDADE_CACHE = Duration.ofMinutes(10);
+
+    private record RecomendacoesEmCache(List<RecommendationResultDTO> resultado, Instant em) {}
+
+    private final Map<Long, RecomendacoesEmCache> cache = new ConcurrentHashMap<>();
 
     @Autowired
     private MovieGraphCache graphCache;
@@ -40,6 +48,23 @@ public class RecommendationService {
      * registrou fica de fora do resultado.
      */
     public List<RecommendationResultDTO> recomendarParaUsuario(User user) {
+        // a home pede isso em toda visita: guardamos o resultado por alguns minutos,
+        // e qualquer mudança no diário da pessoa descarta o que estava guardado
+        RecomendacoesEmCache emCache = cache.get(user.getId());
+        if (emCache != null && emCache.em().plus(VALIDADE_CACHE).isAfter(Instant.now())) {
+            return emCache.resultado();
+        }
+        List<RecommendationResultDTO> resultado = List.copyOf(calcularParaUsuario(user));
+        cache.put(user.getId(), new RecomendacoesEmCache(resultado, Instant.now()));
+        return resultado;
+    }
+
+    /** o diário da pessoa mudou: a próxima visita recalcula as recomendações */
+    public void invalidar(Long userId) {
+        cache.remove(userId);
+    }
+
+    private List<RecommendationResultDTO> calcularParaUsuario(User user) {
         MovieGraph grafo = graphCache.obter();
         Map<Long, Movie> filmesPorId = new HashMap<>();
         for (Movie filme : grafo.getAllMovies()) {

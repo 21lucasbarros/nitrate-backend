@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -20,10 +21,11 @@ public interface WatchlistRepository extends JpaRepository<WatchlistItem, Long> 
     long countByUser(User user);
     List<WatchlistItem> findByMovie(Movie movie);
 
-    // página "Amigos": o que quem `user` segue guardou para ver, mais recente primeiro
-    @Query("select w from WatchlistItem w where w.user in " +
-            "(select f.followed from Follow f where f.follower = :user) order by w.addedAt desc, w.id desc")
-    List<WatchlistItem> findDosAmigos(@Param("user") User user, Pageable pageable);
+    // feed de atividade: filmes que eu ou quem eu sigo pusemos na watchlist
+    @Query("select w from WatchlistItem w where (w.user = :me or w.user in " +
+            "(select f.followed from Follow f where f.follower = :me)) " +
+            "and w.addedAt < :antes order by w.addedAt desc, w.id desc")
+    List<WatchlistItem> findAtividade(@Param("me") User me, @Param("antes") Instant antes, Pageable pageable);
 
     // Radar de Estreias: filmes em alguma watchlist que ainda podem estrear em algum lugar
     // (sem data, com estreia recente ou futura) e que ainda não chegaram ao streaming
