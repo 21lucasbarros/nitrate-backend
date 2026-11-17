@@ -32,3 +32,6 @@ target/
 
 # Arquivos do macOS
 .DS_Store
+
+# Maven baixado pelo build.sh
+apache-maven-*/
