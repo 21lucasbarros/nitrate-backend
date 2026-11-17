@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +47,29 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("select distinct r.movie.id from Review r " +
             "where (r.liked = true or r.rating >= :notaMinima) and r.movie.grafoExpandido = false")
     List<Long> findIdsDeSementesPendentes(@Param("notaMinima") double notaMinima);
+
+    // gostos parecidos: para cada pessoa, quantos filmes ela avaliou em comum com `user`
+    // e a diferença média entre as notas. Linhas: [User, Long filmesEmComum, Double diferencaMedia]
+    @Query("select r2.user, count(distinct r2.movie), avg(abs(r1.rating - r2.rating)) " +
+            "from Review r1, Review r2 " +
+            "where r1.user = :user and r2.movie = r1.movie and r2.user <> :user " +
+            "and r1.rating is not null and r2.rating is not null " +
+            "group by r2.user " +
+            "having count(distinct r2.movie) >= :minimoEmComum")
+    List<Object[]> findAfinidades(@Param("user") User user, @Param("minimoEmComum") long minimoEmComum);
+
+    // descoberta pela comunidade: filmes mais registrados desde `desde` (cada pessoa conta uma vez).
+    // Linhas: [Long movieId, Long pessoas]
+    @Query("select r.movie.id, count(distinct r.user) from Review r " +
+            "where r.createdAt >= :desde group by r.movie.id order by count(distinct r.user) desc, r.movie.id desc")
+    List<Object[]> findMaisRegistrados(@Param("desde") Instant desde, Pageable pageable);
+
+    // descoberta pela comunidade: maiores notas médias entre filmes avaliados por pelo menos `minimo` pessoas.
+    // Linhas: [Long movieId, Double media]
+    @Query("select r.movie.id, avg(r.rating) from Review r where r.rating is not null " +
+            "group by r.movie.id having count(distinct r.user) >= :minimo " +
+            "order by avg(r.rating) desc, count(distinct r.user) desc")
+    List<Object[]> findMaisBemAvaliados(@Param("minimo") long minimo, Pageable pageable);
 
     @Modifying
     @Query("delete from Review r where r.user = :user")

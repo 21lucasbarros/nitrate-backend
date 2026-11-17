@@ -32,6 +32,17 @@ public class MovieResource {
         return movieService.buscarTodos();
     }
 
+    // descoberta pela comunidade (literais: têm prioridade sobre /{id})
+    @GetMapping(value = "/community/trending")
+    public List<MovieDTO> emAlta() {
+        return movieService.emAltaNaComunidade();
+    }
+
+    @GetMapping(value = "/community/top-rated")
+    public List<MovieDTO> maisBemAvaliados() {
+        return movieService.maisBemAvaliadosPelaComunidade();
+    }
+
     @GetMapping(value = "/{id}")
     public MovieDTO buscarPorId(@PathVariable Long id) {
         return movieService.buscarPorId(id);

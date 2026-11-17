@@ -2,6 +2,7 @@ package com.lucasbarros.nitrate.services;
 
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
+import com.lucasbarros.nitrate.dto.SimilarUserDTO;
 import com.lucasbarros.nitrate.dto.UserSummaryDTO;
 import com.lucasbarros.nitrate.entities.FavoriteFilm;
 import com.lucasbarros.nitrate.entities.Follow;
@@ -30,6 +31,8 @@ public class SocialService {
     private static final int FEED_MAX = 30;
     private static final int BUSCA_MAX = 10;
     private static final int BUSCA_TERMO_MAX = 50;
+    private static final long PARECIDOS_MINIMO_EM_COMUM = 3;
+    private static final int PARECIDOS_MAX = 8;
 
     @Autowired private UserRepository userRepository;
     @Autowired private FollowRepository followRepository;
@@ -93,6 +96,32 @@ public class SocialService {
         List<UserSummaryDTO> dtos = new ArrayList<>();
         userRepository.pesquisar(literal, PageRequest.of(0, BUSCA_MAX)).forEach(u -> dtos.add(new UserSummaryDTO(u)));
         return dtos;
+    }
+
+    /**
+     * Quem tem gosto parecido: pessoas que avaliaram pelo menos alguns dos mesmos filmes com notas
+     * próximas. Quem você já segue fica de fora (a ideia é encontrar gente nova).
+     */
+    @Transactional(readOnly = true)
+    public List<SimilarUserDTO> gostosParecidos(User eu) {
+        record Candidato(SimilarUserDTO dto, double pontuacao) {}
+        List<Candidato> candidatos = new ArrayList<>();
+        for (Object[] linha : reviewRepository.findAfinidades(eu, PARECIDOS_MINIMO_EM_COMUM)) {
+            User outro = (User) linha[0];
+            long emComum = ((Number) linha[1]).longValue();
+            double diferenca = ((Number) linha[2]).doubleValue();
+            if (followRepository.existsByFollowerAndFollowed(eu, outro)) continue;
+            // notas vão de 0.5 a 5: a maior diferença possível é 4.5
+            double afinidade = Math.max(0, 1 - diferenca / 4.5);
+            // concordar em muitos filmes vale mais do que concordar em poucos
+            double pontuacao = afinidade * Math.sqrt(emComum);
+            candidatos.add(new Candidato(new SimilarUserDTO(outro, emComum, (int) Math.round(afinidade * 100)), pontuacao));
+        }
+        return candidatos.stream()
+                .sorted((a, b) -> Double.compare(b.pontuacao(), a.pontuacao()))
+                .limit(PARECIDOS_MAX)
+                .map(Candidato::dto)
+                .toList();
     }
 
     @Transactional(readOnly = true)

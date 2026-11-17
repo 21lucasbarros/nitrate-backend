@@ -14,6 +14,7 @@ public record AccountExportDTO(
         List<DiaryEntry> diary,
         List<WatchlistEntry> watchlist,
         List<Film> favorites,
+        List<FilmList> lists,
         List<String> following,
         List<String> followers) {
 
@@ -26,4 +27,6 @@ public record AccountExportDTO(
                              String review, boolean spoiler, Instant createdAt) {}
 
     public record WatchlistEntry(Film film, Instant addedAt) {}
+
+    public record FilmList(String name, String description, boolean isPublic, List<Film> films, Instant createdAt) {}
 }

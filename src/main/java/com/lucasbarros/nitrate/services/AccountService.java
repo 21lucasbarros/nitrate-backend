@@ -8,6 +8,7 @@ import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.repositories.FavoriteFilmRepository;
 import com.lucasbarros.nitrate.repositories.FollowRepository;
+import com.lucasbarros.nitrate.repositories.MovieListRepository;
 import com.lucasbarros.nitrate.repositories.NotificationRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
@@ -41,6 +42,8 @@ public class AccountService {
     @Autowired private FavoriteFilmRepository favoriteFilmRepository;
     @Autowired private FollowRepository followRepository;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private MovieListRepository movieListRepository;
+    @Autowired private MovieListService movieListService;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private UserService userService;
 
@@ -75,7 +78,7 @@ public class AccountService {
 
     /**
      * Exclusão definitiva (LGPD, art. 18, VI): apaga a conta e tudo ligado a ela — diário,
-     * reviews, watchlist, favoritos, quem segue e quem é seguido, notificações. Não há como desfazer.
+     * reviews, watchlist, favoritos, listas, quem segue e quem é seguido, notificações. Não há como desfazer.
      */
     @Transactional
     public void excluirConta(User user, String senha) {
@@ -84,6 +87,7 @@ public class AccountService {
             throw new ForbiddenException("Senha incorreta.");
         }
         notificationRepository.deleteAllByUser(salvo);
+        movieListService.excluirTodas(salvo);
         favoriteFilmRepository.deleteAllByUser(salvo);
         watchlistRepository.deleteAllByUser(salvo);
         reviewRepository.deleteAllByUser(salvo);
@@ -107,6 +111,10 @@ public class AccountService {
                         .toList(),
                 favoriteFilmRepository.findByUserOrderByPositionAsc(u).stream()
                         .map(f -> filme(f.getMovie()))
+                        .toList(),
+                movieListRepository.findByUserOrderByUpdatedAtDesc(u).stream()
+                        .map(l -> new AccountExportDTO.FilmList(l.getName(), l.getDescription(), l.isPublicList(),
+                                l.getEntries().stream().map(e -> filme(e.getMovie())).toList(), l.getCreatedAt()))
                         .toList(),
                 usernames(followRepository.findByFollowerOrderByCreatedAtDesc(u), true),
                 usernames(followRepository.findByFollowedOrderByCreatedAtDesc(u), false));

@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.dto.AccountDeletionDTO;
 import com.lucasbarros.nitrate.dto.AccountExportDTO;
 import com.lucasbarros.nitrate.dto.FavoritesRequestDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
+import com.lucasbarros.nitrate.dto.MovieListDTO;
 import com.lucasbarros.nitrate.dto.MovieUserStateDTO;
 import com.lucasbarros.nitrate.dto.NotificationDTO;
 import com.lucasbarros.nitrate.dto.PageDTO;
@@ -11,11 +12,13 @@ import com.lucasbarros.nitrate.dto.ProfileUpdateDTO;
 import com.lucasbarros.nitrate.dto.RecommendationResultDTO;
 import com.lucasbarros.nitrate.dto.RetrospectiveDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
+import com.lucasbarros.nitrate.dto.SimilarUserDTO;
 import com.lucasbarros.nitrate.dto.UserProfileDTO;
 import com.lucasbarros.nitrate.dto.UserSummaryDTO;
 import com.lucasbarros.nitrate.dto.WatchlistItemDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
 import com.lucasbarros.nitrate.services.AccountService;
+import com.lucasbarros.nitrate.services.MovieListService;
 import com.lucasbarros.nitrate.services.NotificationService;
 import com.lucasbarros.nitrate.services.RecommendationService;
 import com.lucasbarros.nitrate.services.RetrospectiveService;
@@ -50,6 +53,9 @@ public class UserResource {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private MovieListService movieListService;
 
     @GetMapping("/me")
     public UserProfileDTO me(@AuthenticationPrincipal CustomUserDetails principal) {
@@ -115,6 +121,19 @@ public class UserResource {
         return socialService.definirFavoritos(principal.getUser(), request.movieIds());
     }
 
+    // com movieId, cada lista diz se já tem o filme (o "adicionar à lista" da página do filme)
+    @GetMapping("/me/lists")
+    public List<MovieListDTO> minhasListas(@AuthenticationPrincipal CustomUserDetails principal,
+                                           @RequestParam(required = false) Long movieId) {
+        return movieListService.minhasListas(principal.getUser(), movieId);
+    }
+
+    // quem avaliou os mesmos filmes com notas parecidas
+    @GetMapping("/me/similar")
+    public List<SimilarUserDTO> gostosParecidos(@AuthenticationPrincipal CustomUserDetails principal) {
+        return socialService.gostosParecidos(principal.getUser());
+    }
+
     // literal: tem prioridade sobre /{username} ("search" é um nome reservado no cadastro)
     @GetMapping("/search")
     public List<UserSummaryDTO> pesquisar(@RequestParam(defaultValue = "") String q) {
@@ -163,6 +182,13 @@ public class UserResource {
     @GetMapping("/{username}/watchlist")
     public List<WatchlistItemDTO> watchlist(@PathVariable String username) {
         return userService.watchlist(username);
+    }
+
+    // rota pública; no próprio perfil (com token) vêm também as listas privadas
+    @GetMapping("/{username}/lists")
+    public List<MovieListDTO> listas(@AuthenticationPrincipal CustomUserDetails principal,
+                                     @PathVariable String username) {
+        return movieListService.listasDoUsuario(username, principal == null ? null : principal.getUser());
     }
 
     // a retrospectiva é exclusiva de quem é dono do diário: só existe em /users/me

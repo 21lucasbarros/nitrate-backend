@@ -20,6 +20,7 @@ import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieSummaryDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbWatchProvidersDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class MovieService {
     private static final int TERMO_MIN = 2;
+    private static final int COMUNIDADE_MAX = 12;
+    private static final int COMUNIDADE_MINIMO = 6; // menos que isso em alta: usa o histórico todo
+    private static final long EM_ALTA_DIAS = 30;
+    private static final long MELHORES_MINIMO_AVALIACOES = 2;
 
     @Autowired
     private MovieRepository movieRepository;
@@ -59,6 +64,38 @@ public class MovieService {
         List<MovieDTO> dtos = new ArrayList<>();
         for(Movie filme : filmes) {
             dtos.add(new MovieDTO(filme));
+        }
+        return dtos;
+    }
+
+    /** os filmes que mais gente registrou nos últimos dias; com pouca atividade recente, de todos os tempos */
+    @Transactional(readOnly = true)
+    public List<MovieDTO> emAltaNaComunidade() {
+        PageRequest pagina = PageRequest.of(0, COMUNIDADE_MAX);
+        List<Object[]> linhas = reviewRepository.findMaisRegistrados(
+                Instant.now().minus(Duration.ofDays(EM_ALTA_DIAS)), pagina);
+        if (linhas.size() < COMUNIDADE_MINIMO) {
+            linhas = reviewRepository.findMaisRegistrados(Instant.EPOCH, pagina);
+        }
+        return filmesNaOrdem(linhas);
+    }
+
+    /** as maiores notas médias entre filmes que várias pessoas avaliaram */
+    @Transactional(readOnly = true)
+    public List<MovieDTO> maisBemAvaliadosPelaComunidade() {
+        return filmesNaOrdem(reviewRepository.findMaisBemAvaliados(
+                MELHORES_MINIMO_AVALIACOES, PageRequest.of(0, COMUNIDADE_MAX)));
+    }
+
+    /** linhas [movieId, ...] → filmes na mesma ordem */
+    private List<MovieDTO> filmesNaOrdem(List<Object[]> linhas) {
+        List<Long> ids = linhas.stream().map(l -> ((Number) l[0]).longValue()).toList();
+        Map<Long, Movie> porId = new HashMap<>();
+        movieRepository.findAllById(ids).forEach(m -> porId.put(m.getId(), m));
+        List<MovieDTO> dtos = new ArrayList<>();
+        for (Long id : ids) {
+            Movie filme = porId.get(id);
+            if (filme != null) dtos.add(new MovieDTO(filme));
         }
         return dtos;
     }
