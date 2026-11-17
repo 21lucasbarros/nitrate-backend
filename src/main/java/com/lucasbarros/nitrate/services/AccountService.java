@@ -10,6 +10,8 @@ import com.lucasbarros.nitrate.repositories.FavoriteFilmRepository;
 import com.lucasbarros.nitrate.repositories.FollowRepository;
 import com.lucasbarros.nitrate.repositories.MovieListRepository;
 import com.lucasbarros.nitrate.repositories.NotificationRepository;
+import com.lucasbarros.nitrate.repositories.ReviewCommentRepository;
+import com.lucasbarros.nitrate.repositories.ReviewLikeRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.repositories.WatchlistRepository;
@@ -43,6 +45,8 @@ public class AccountService {
     @Autowired private FollowRepository followRepository;
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private MovieListRepository movieListRepository;
+    @Autowired private ReviewLikeRepository reviewLikeRepository;
+    @Autowired private ReviewCommentRepository reviewCommentRepository;
     @Autowired private MovieListService movieListService;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private UserService userService;
@@ -78,7 +82,7 @@ public class AccountService {
 
     /**
      * Exclusão definitiva (LGPD, art. 18, VI): apaga a conta e tudo ligado a ela — diário,
-     * reviews, watchlist, favoritos, listas, quem segue e quem é seguido, notificações. Não há como desfazer.
+     * reviews, curtidas e comentários, watchlist, favoritos, listas, quem segue e quem é seguido, notificações. Não há como desfazer.
      */
     @Transactional
     public void excluirConta(User user, String senha) {
@@ -88,6 +92,9 @@ public class AccountService {
         }
         notificationRepository.deleteAllByUser(salvo);
         movieListService.excluirTodas(salvo);
+        // antes das reviews: curtidas e comentários apontam para elas
+        reviewLikeRepository.deleteAllInvolving(salvo);
+        reviewCommentRepository.deleteAllInvolving(salvo);
         favoriteFilmRepository.deleteAllByUser(salvo);
         watchlistRepository.deleteAllByUser(salvo);
         reviewRepository.deleteAllByUser(salvo);
@@ -115,6 +122,14 @@ public class AccountService {
                 movieListRepository.findByUserOrderByUpdatedAtDesc(u).stream()
                         .map(l -> new AccountExportDTO.FilmList(l.getName(), l.getDescription(), l.isPublicList(),
                                 l.getEntries().stream().map(e -> filme(e.getMovie())).toList(), l.getCreatedAt()))
+                        .toList(),
+                reviewCommentRepository.findByUserOrderByCreatedAtDesc(u).stream()
+                        .map(c -> new AccountExportDTO.Comment(filme(c.getReview().getMovie()),
+                                c.getReview().getUser().getUsername(), c.getText(), c.getCreatedAt()))
+                        .toList(),
+                reviewLikeRepository.findByUserOrderByCreatedAtDesc(u).stream()
+                        .map(l -> new AccountExportDTO.ReviewLike(filme(l.getReview().getMovie()),
+                                l.getReview().getUser().getUsername(), l.getCreatedAt()))
                         .toList(),
                 usernames(followRepository.findByFollowerOrderByCreatedAtDesc(u), true),
                 usernames(followRepository.findByFollowedOrderByCreatedAtDesc(u), false));

@@ -30,6 +30,7 @@ public class ReviewService {
     @Autowired private MovieRepository movieRepository;
     @Autowired private WatchlistRepository watchlistRepository;
     @Autowired private GraphExpansionService graphExpansionService;
+    @Autowired private ReviewSocialService reviewSocialService;
 
     @Transactional
     public ReviewDTO criar(User user, ReviewRequestDTO request) {
@@ -89,7 +90,9 @@ public class ReviewService {
 
     @Transactional
     public void deletar(User user, Long id) {
-        reviewRepository.delete(buscarDoUsuario(user, id));
+        Review review = buscarDoUsuario(user, id);
+        reviewSocialService.limparReview(review);
+        reviewRepository.delete(review);
     }
 
     @Transactional(readOnly = true)
