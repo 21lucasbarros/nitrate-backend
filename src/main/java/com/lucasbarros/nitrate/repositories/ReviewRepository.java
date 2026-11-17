@@ -26,6 +26,13 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             "(select f.followed from Follow f where f.follower = :user) " +
             "order by r.createdAt desc, r.id desc")
     List<Review> findFeed(@Param("user") User user, Pageable pageable);
+    // página "Amigos": o mesmo feed, paginado
+    @Query(value = "select r from Review r where r.user in " +
+            "(select f.followed from Follow f where f.follower = :user) " +
+            "order by r.createdAt desc, r.id desc",
+            countQuery = "select count(r) from Review r where r.user in " +
+            "(select f.followed from Follow f where f.follower = :user)")
+    Page<Review> findFeedPaginado(@Param("user") User user, Pageable pageable);
     // destaque na landing: reviews com texto e sem spoiler
     List<Review> findTop3ByTextIsNotNullAndSpoilerFalseOrderByCreatedAtDesc();
     List<Review> findByUserAndWatchedOnBetweenOrderByWatchedOnAsc(User user, LocalDate inicio, LocalDate fim);
