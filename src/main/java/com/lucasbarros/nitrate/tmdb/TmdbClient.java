@@ -83,6 +83,18 @@ public class TmdbClient {
                 .body(TmdbPersonSearchResponseDTO.class);
     }
 
+    /** só nome e foto, sem a filmografia (para guardar favoritos) */
+    public TmdbPersonDetailDTO buscarPessoa(Long personId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/person/{id}")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .build(personId))
+                .retrieve()
+                .body(TmdbPersonDetailDTO.class);
+    }
+
     public TmdbPersonDetailDTO buscarPessoaComFilmografia(Long personId) {
         return restClient().get()
                 .uri(uriBuilder -> uriBuilder

@@ -2,6 +2,7 @@ package com.lucasbarros.nitrate.services;
 
 import com.lucasbarros.nitrate.dto.RecommendationRequestDTO;
 import com.lucasbarros.nitrate.dto.RecommendationResultDTO;
+import com.lucasbarros.nitrate.entities.FavoritePerson;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.Review;
 import com.lucasbarros.nitrate.entities.User;
@@ -10,6 +11,7 @@ import com.lucasbarros.nitrate.graph.MovieGraphCache;
 import com.lucasbarros.nitrate.recommender.RecommendationEngine;
 import com.lucasbarros.nitrate.recommender.RecommendationResult;
 import com.lucasbarros.nitrate.recommender.UserPreferences;
+import com.lucasbarros.nitrate.repositories.FavoritePersonRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +44,9 @@ public class RecommendationService {
     @Autowired
     private ReviewRepository reviewRepository;
 
+    @Autowired
+    private FavoritePersonRepository favoritePersonRepository;
+
     /**
      * Recomendações a partir do diário: os filmes que a pessoa curtiu ou avaliou bem são as
      * sementes do grafo. Se não houver nenhum, usa os registrados sem nota. Tudo que ela já
@@ -59,7 +64,7 @@ public class RecommendationService {
         return resultado;
     }
 
-    /** o diário da pessoa mudou: a próxima visita recalcula as recomendações */
+    /** o diário ou os favoritos da pessoa mudaram: a próxima visita recalcula as recomendações */
     public void invalidar(Long userId) {
         cache.remove(userId);
     }
@@ -97,6 +102,14 @@ public class RecommendationService {
         }
         if (preferencias.getLikedMovies().isEmpty()) {
             return new ArrayList<>();
+        }
+        // atores e diretores favoritos do perfil: filmes ligados a eles ganham peso extra
+        for (FavoritePerson favorito : favoritePersonRepository.findByUserOrderByPositionAsc(user)) {
+            if (favorito.getKind() == FavoritePerson.Kind.ACTOR) {
+                preferencias.addFavoriteActor(favorito.getName());
+            } else {
+                preferencias.addFavoriteDirector(favorito.getName());
+            }
         }
 
         // pede mais que o necessário porque os já registrados (mas não curtidos) são descartados

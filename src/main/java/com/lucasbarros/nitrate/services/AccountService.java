@@ -3,10 +3,12 @@ package com.lucasbarros.nitrate.services;
 import com.lucasbarros.nitrate.dto.AccountExportDTO;
 import com.lucasbarros.nitrate.dto.ProfileUpdateDTO;
 import com.lucasbarros.nitrate.dto.UserProfileDTO;
+import com.lucasbarros.nitrate.entities.FavoritePerson;
 import com.lucasbarros.nitrate.entities.Follow;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.repositories.FavoriteFilmRepository;
+import com.lucasbarros.nitrate.repositories.FavoritePersonRepository;
 import com.lucasbarros.nitrate.repositories.FollowRepository;
 import com.lucasbarros.nitrate.repositories.MovieListRepository;
 import com.lucasbarros.nitrate.repositories.NotificationRepository;
@@ -42,6 +44,7 @@ public class AccountService {
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private WatchlistRepository watchlistRepository;
     @Autowired private FavoriteFilmRepository favoriteFilmRepository;
+    @Autowired private FavoritePersonRepository favoritePersonRepository;
     @Autowired private FollowRepository followRepository;
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private MovieListRepository movieListRepository;
@@ -96,6 +99,7 @@ public class AccountService {
         reviewLikeRepository.deleteAllInvolving(salvo);
         reviewCommentRepository.deleteAllInvolving(salvo);
         favoriteFilmRepository.deleteAllByUser(salvo);
+        favoritePersonRepository.deleteAllByUser(salvo);
         watchlistRepository.deleteAllByUser(salvo);
         reviewRepository.deleteAllByUser(salvo);
         followRepository.deleteAllInvolving(salvo);
@@ -118,6 +122,10 @@ public class AccountService {
                         .toList(),
                 favoriteFilmRepository.findByUserOrderByPositionAsc(u).stream()
                         .map(f -> filme(f.getMovie()))
+                        .toList(),
+                favoritePersonRepository.findByUserOrderByPositionAsc(u).stream()
+                        .map(f -> new AccountExportDTO.FavoritePerson(
+                                f.getKind() == FavoritePerson.Kind.ACTOR ? "actor" : "director", f.getName(), f.getTmdbId()))
                         .toList(),
                 movieListRepository.findByUserOrderByUpdatedAtDesc(u).stream()
                         .map(l -> new AccountExportDTO.FilmList(l.getName(), l.getDescription(), l.isPublicList(),

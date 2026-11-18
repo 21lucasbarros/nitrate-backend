@@ -14,6 +14,7 @@ public record AccountExportDTO(
         List<DiaryEntry> diary,
         List<WatchlistEntry> watchlist,
         List<Film> favorites,
+        List<FavoritePerson> favoritePeople,
         List<FilmList> lists,
         List<Comment> comments,
         List<ReviewLike> reviewLikes,
@@ -27,6 +28,9 @@ public record AccountExportDTO(
 
     public record DiaryEntry(Film film, LocalDate watchedOn, Double rating, boolean liked, boolean rewatch,
                              String review, boolean spoiler, Instant createdAt) {}
+
+    /** ator/atriz ("actor") ou diretor(a) ("director") favorito, na ordem do perfil */
+    public record FavoritePerson(String kind, String name, Long tmdbId) {}
 
     public record WatchlistEntry(Film film, Instant addedAt) {}
 

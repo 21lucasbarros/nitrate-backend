@@ -2,7 +2,11 @@ package com.lucasbarros.nitrate.resources;
 
 import com.lucasbarros.nitrate.dto.AccountDeletionDTO;
 import com.lucasbarros.nitrate.dto.AccountExportDTO;
+import com.lucasbarros.nitrate.dto.FavoritePeopleDTO;
+import com.lucasbarros.nitrate.dto.FavoritePeopleRequestDTO;
+import com.lucasbarros.nitrate.dto.FavoritePersonDTO;
 import com.lucasbarros.nitrate.dto.FavoritesRequestDTO;
+import com.lucasbarros.nitrate.entities.FavoritePerson;
 import com.lucasbarros.nitrate.dto.ActivityPageDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.MovieListDTO;
@@ -19,6 +23,7 @@ import com.lucasbarros.nitrate.dto.UserSummaryDTO;
 import com.lucasbarros.nitrate.dto.WatchlistItemDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
 import com.lucasbarros.nitrate.services.AccountService;
+import com.lucasbarros.nitrate.services.FavoritePeopleService;
 import com.lucasbarros.nitrate.services.FriendsService;
 import com.lucasbarros.nitrate.services.MovieListService;
 import com.lucasbarros.nitrate.services.NotificationService;
@@ -62,6 +67,9 @@ public class UserResource {
 
     @Autowired
     private FriendsService friendsService;
+
+    @Autowired
+    private FavoritePeopleService favoritePeopleService;
 
     @GetMapping("/me")
     public UserProfileDTO me(@AuthenticationPrincipal CustomUserDetails principal) {
@@ -125,6 +133,18 @@ public class UserResource {
     public List<MovieDTO> definirFavoritos(@AuthenticationPrincipal CustomUserDetails principal,
                                            @RequestBody FavoritesRequestDTO request) {
         return socialService.definirFavoritos(principal.getUser(), request.movieIds());
+    }
+
+    @PutMapping("/me/favorites/actors")
+    public List<FavoritePersonDTO> definirAtoresFavoritos(@AuthenticationPrincipal CustomUserDetails principal,
+                                                          @RequestBody FavoritePeopleRequestDTO request) {
+        return favoritePeopleService.definirFavoritos(principal.getUser(), FavoritePerson.Kind.ACTOR, request.tmdbIds());
+    }
+
+    @PutMapping("/me/favorites/directors")
+    public List<FavoritePersonDTO> definirDiretoresFavoritos(@AuthenticationPrincipal CustomUserDetails principal,
+                                                             @RequestBody FavoritePeopleRequestDTO request) {
+        return favoritePeopleService.definirFavoritos(principal.getUser(), FavoritePerson.Kind.DIRECTOR, request.tmdbIds());
     }
 
     // com movieId, cada lista diz se já tem o filme (o "adicionar à lista" da página do filme)
@@ -191,6 +211,11 @@ public class UserResource {
                                       @RequestParam(defaultValue = "30") int size,
                                       @RequestParam(defaultValue = "false") boolean withText) {
         return userService.reviews(username, page, size, withText);
+    }
+
+    @GetMapping("/{username}/favorites/people")
+    public FavoritePeopleDTO pessoasFavoritas(@PathVariable String username) {
+        return favoritePeopleService.favoritos(username);
     }
 
     @GetMapping("/{username}/watchlist")
