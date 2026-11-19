@@ -37,6 +37,20 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
     @Query("update Movie m set m.grafoExpandido = true where m.id = :id")
     void marcarGrafoExpandido(@Param("id") Long id);
 
+    // filmes importados antes de a data de estreia existir. Linhas: [Long id, Long tmdbId]
+    @Query("select m.id, m.tmdbId from Movie m where m.releaseDate is null and m.tmdbId is not null order by m.id")
+    List<Object[]> findSemDataDeEstreia();
+
+    // os mesmos, mas só os que estão no diário de alguém (é neles que a ordem por lançamento aparece)
+    @Query("select distinct r.movie.id, r.movie.tmdbId from Review r " +
+            "where r.movie.releaseDate is null and r.movie.tmdbId is not null")
+    List<Object[]> findSemDataDeEstreiaEmDiarios();
+
+    @Modifying
+    @Transactional
+    @Query("update Movie m set m.releaseDate = :estreia where m.id = :id")
+    void atualizarDataDeEstreia(@Param("id") Long id, @Param("estreia") LocalDate estreia);
+
     // Radar de Estreias: grava só o que a verificação encontrou, sem regravar o filme inteiro
     @Modifying
     @Transactional

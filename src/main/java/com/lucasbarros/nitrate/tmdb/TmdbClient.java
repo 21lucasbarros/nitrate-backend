@@ -33,6 +33,18 @@ public class TmdbClient {
         return resposta;
     }
 
+    /** só os detalhes do filme (sem elenco): para preencher dados que faltam, como a data de estreia */
+    public TmdbMovieDetailDTO buscarDetalhes(Long tmdbId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/movie/{id}")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .build(tmdbId))
+                .retrieve()
+                .body(TmdbMovieDetailDTO.class);
+    }
+
     public TmdbMovieDetailDTO buscarDetalhesComCreditos(Long tmdbId) {
         return restClient().get()
                 .uri(uriBuilder -> uriBuilder

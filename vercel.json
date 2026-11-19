@@ -3,6 +3,7 @@
   "regions": ["gru1"],
   "crons": [
     { "path": "/admin/expand-graph", "schedule": "0 6 * * *" },
-    { "path": "/admin/release-radar", "schedule": "0 12 * * *" }
+    { "path": "/admin/release-radar", "schedule": "0 12 * * *" },
+    { "path": "/admin/release-dates", "schedule": "0 7 * * *" }
   ]
 }
