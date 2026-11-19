@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.dto.AccountDeletionDTO;
 import com.lucasbarros.nitrate.dto.AccountExportDTO;
 import com.lucasbarros.nitrate.dto.FavoritePeopleDTO;
 import com.lucasbarros.nitrate.dto.FavoritePeopleRequestDTO;
+import com.lucasbarros.nitrate.dto.FilmDTO;
 import com.lucasbarros.nitrate.dto.FavoritePersonDTO;
 import com.lucasbarros.nitrate.dto.FavoritesRequestDTO;
 import com.lucasbarros.nitrate.entities.FavoritePerson;
@@ -243,7 +244,18 @@ public class UserResource {
         return userService.reviews(username, page, size, withText);
     }
 
-    @GetMapping("/{username}/favorites/people")
+    // todos os filmes assistidos, sem repetir reassistidos; ordem: lancamento (padrão), lancamento-antigos,
+    // nota, nota-menor, assistidos, titulo
+    @GetMapping("/{username}/films")
+    public PageDTO<FilmDTO> filmes(@PathVariable String username,
+                                     @RequestParam(defaultValue = "0") int page,
+                                     @RequestParam(defaultValue = "48") int size,
+                                     @RequestParam(defaultValue = "lancamento") String sort,
+                                     @RequestParam(defaultValue = "false") boolean liked) {
+        return userService.filmes(username, page, size, sort, liked);
+    }
+
+        @GetMapping("/{username}/favorites/people")
     public FavoritePeopleDTO pessoasFavoritas(@PathVariable String username) {
         return favoritePeopleService.favoritos(username);
     }
