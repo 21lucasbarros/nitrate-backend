@@ -10,6 +10,10 @@ import java.util.List;
 import java.util.Map;
 
 public class MovieGraph {
+    // gênero presente em até 5% do catálogo conta como raro (peso cheio)
+    private static final double FRACAO_GENERO_RARO = 0.05;
+    private static final double PESO_MINIMO_GENERO = 0.2;
+
     private List<Movie> movies;
 
     private Map<String, List<Movie>> byDirection = new HashMap<>();
@@ -111,13 +115,25 @@ public class MovieGraph {
             List<Movie> candidatos = byGenre.get(genero.getName().toLowerCase());
             if (candidatos == null) continue;
 
+            double weight = ConnectionType.GENRE.getBaseWeight() * raridadeDoGenero(candidatos.size());
             for (Movie candidato : candidatos) {
                 if (candidato.equals(source)) continue;
                 String reason = "mesmo gênero: " + genero.getName();
-                edges.add(new Edge(candidato, ConnectionType.GENRE, ConnectionType.GENRE.getBaseWeight(), reason, genero.getName()));
+                edges.add(new Edge(candidato, ConnectionType.GENRE, weight, reason, genero.getName()));
             }
         }
         return edges;
+    }
+
+    /**
+     * Gênero comum diz pouco: dividir "Drama" com metade do catálogo não aproxima dois filmes,
+     * já dividir "Faroeste" sim. O peso cai com a fração do acervo que tem o gênero (estilo IDF):
+     * até 5% do catálogo vale o peso cheio, metade do catálogo vale ~23%, e nunca menos de 20%.
+     */
+    private double raridadeDoGenero(int filmesNoGenero) {
+        double fracao = (double) filmesNoGenero / Math.max(1, movies.size());
+        double raridade = Math.log(1.0 / fracao) / Math.log(1.0 / FRACAO_GENERO_RARO);
+        return Math.max(PESO_MINIMO_GENERO, Math.min(1.0, raridade));
     }
 
     private List<Edge> conectarPorFranquia(Movie source) {

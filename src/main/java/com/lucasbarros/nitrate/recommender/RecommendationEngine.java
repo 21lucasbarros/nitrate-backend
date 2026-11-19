@@ -7,6 +7,7 @@ import com.lucasbarros.nitrate.graph.MovieGraph;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -38,7 +39,7 @@ public class RecommendationEngine {
                     accumulators.put(candidate, accumulator);
                 }
 
-                accumulator.aplicarConexao(edge, preferences);
+                accumulator.aplicarConexao(edge, liked, preferences);
             }
         }
 
@@ -76,7 +77,7 @@ public class RecommendationEngine {
         private Map<ConnectionType, Integer> typeCounts = new HashMap<>();
         private List<ReasonContribution> contributions = new ArrayList<>();
 
-        void aplicarConexao(Edge edge, UserPreferences preferences) {
+        void aplicarConexao(Edge edge, Movie origem, UserPreferences preferences) {
             int countSoFar = 0;
             if (typeCounts.containsKey(edge.getType())) {
                 countSoFar = typeCounts.get(edge.getType());
@@ -90,7 +91,7 @@ public class RecommendationEngine {
 
             totalScore = totalScore + contribution;
             typeCounts.put(edge.getType(), countSoFar + 1);
-            contributions.add(new ReasonContribution(edge.getReason(), contribution));
+            contributions.add(new ReasonContribution(edge.getReason(), contribution, origem));
         }
 
         private double calcularBoostFavorito(Edge edge, UserPreferences preferences) {
@@ -105,17 +106,16 @@ public class RecommendationEngine {
 
         RecommendationResult gerarResultado(Movie movie) {
             Map<String, Double> somaPorMotivo = new HashMap<>();
-            Map<String, Integer> vezesPorMotivo = new HashMap<>();
+            // os filmes curtidos que geraram cada motivo, na ordem em que foram curtidos (mais recente primeiro)
+            Map<String, LinkedHashSet<String>> origensPorMotivo = new HashMap<>();
 
             for (ReasonContribution rc : contributions) {
                 double somaAtual = 0;
-                int vezesAtual = 0;
                 if (somaPorMotivo.containsKey(rc.reason)) {
                     somaAtual = somaPorMotivo.get(rc.reason);
-                    vezesAtual = vezesPorMotivo.get(rc.reason);
                 }
                 somaPorMotivo.put(rc.reason, somaAtual + rc.contribution);
-                vezesPorMotivo.put(rc.reason, vezesAtual + 1);
+                origensPorMotivo.computeIfAbsent(rc.reason, k -> new LinkedHashSet<>()).add(rc.origem.getTitle());
             }
 
             List<String> motivosOrdenados = ordenarMotivosPorForca(somaPorMotivo);
@@ -124,16 +124,19 @@ public class RecommendationEngine {
             int limite = Math.min(4, motivosOrdenados.size());
             for (int i = 0; i < limite; i++) {
                 String motivo = motivosOrdenados.get(i);
-                int vezes = vezesPorMotivo.get(motivo);
-                if (vezes > 1) {
-                    reasons.add(motivo + " (reforçado por " + vezes + " filmes curtidos)");
-                } else {
-                    reasons.add(motivo);
-                }
+                reasons.add(motivo + ", como em " + listarOrigens(new ArrayList<>(origensPorMotivo.get(motivo))));
             }
 
             double arredondado = Math.round(totalScore * 100.0) / 100.0;
             return new RecommendationResult(movie, arredondado, reasons);
+        }
+
+        /** "Oppenheimer", "Oppenheimer e Tenet", "Oppenheimer, Tenet e mais 2" */
+        private String listarOrigens(List<String> titulos) {
+            if (titulos.size() == 1) return titulos.get(0);
+            if (titulos.size() == 2) return titulos.get(0) + " e " + titulos.get(1);
+            int resto = titulos.size() - 2;
+            return titulos.get(0) + ", " + titulos.get(1) + " e mais " + resto;
         }
 
         private List<String> ordenarMotivosPorForca(Map<String, Double> somaPorMotivo) {
@@ -161,10 +164,12 @@ public class RecommendationEngine {
     private static class ReasonContribution {
         String reason;
         double contribution;
+        Movie origem;
 
-        ReasonContribution(String reason, double contribution) {
+        ReasonContribution(String reason, double contribution, Movie origem) {
             this.reason = reason;
             this.contribution = contribution;
+            this.origem = origem;
         }
     }
 }

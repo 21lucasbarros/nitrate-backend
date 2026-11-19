@@ -102,6 +102,41 @@ class RecommendationEngineTest {
     }
 
     @Test
+    void motivoCitaOsFilmesCurtidosQueOGeraram() {
+        Director nolan = new Director("Christopher Nolan");
+        Movie oppenheimer = filme("Oppenheimer", 2023, nolan, null);
+        Movie tenet = filme("Tenet", 2020, nolan, null);
+        Movie odisseia = filme("A Odisseia", 2026, nolan, null);
+
+        UserPreferences prefs = new UserPreferences();
+        prefs.addLikedMovie(oppenheimer);
+        prefs.addLikedMovie(tenet);
+        List<RecommendationResult> resultado = new RecommendationEngine(new MovieGraph(List.of(oppenheimer, tenet, odisseia))).recommend(prefs, 5);
+
+        assertEquals("mesmo diretor (Christopher Nolan), como em Oppenheimer e Tenet", resultado.get(0).getReasons().get(0));
+    }
+
+    @Test
+    void generoComumPesaMenosQueGeneroRaro() {
+        Genre drama = new Genre("Drama");
+        Genre faroeste = new Genre("Faroeste");
+        Movie curtidoDrama = filme("Drama Curtido", 2020, null, null, drama);
+        Movie outroDrama = filme("Outro Drama", 2021, null, null, drama);
+        Movie curtidoFaroeste = filme("Faroeste Curtido", 2020, null, null, faroeste);
+        Movie outroFaroeste = filme("Outro Faroeste", 2021, null, null, faroeste);
+        // catálogo com 20 dramas e só 2 faroestes
+        List<Movie> catalogo = new java.util.ArrayList<>(List.of(curtidoDrama, outroDrama, curtidoFaroeste, outroFaroeste));
+        for (int i = 0; i < 18; i++) catalogo.add(filme("Drama " + i, 2000, null, null, drama));
+
+        UserPreferences prefs = new UserPreferences();
+        prefs.addLikedMovie(curtidoDrama);
+        prefs.addLikedMovie(curtidoFaroeste);
+        List<RecommendationResult> resultado = new RecommendationEngine(new MovieGraph(catalogo)).recommend(prefs, 5);
+
+        assertEquals(outroFaroeste, resultado.get(0).getMovie());
+    }
+
+    @Test
     void mesmaEpocaSozinhaNaoConectaMais() {
         Movie a = filme("Filme A", 2021, new Director("Diretora A"), null);
         Movie b = filme("Filme B", 2024, new Director("Diretor B"), null);
