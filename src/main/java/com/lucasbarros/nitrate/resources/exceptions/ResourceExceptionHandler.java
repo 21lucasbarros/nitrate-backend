@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.services.exceptions.ConflictException;
 import com.lucasbarros.nitrate.services.exceptions.EmailJaCadastradoException;
 import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
+import com.lucasbarros.nitrate.services.exceptions.TooManyRequestsException;
 import com.lucasbarros.nitrate.services.exceptions.UsernameJaCadastradoException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -86,6 +87,17 @@ public class ResourceExceptionHandler {
         erro.setMessage(e.getMessage());
         erro.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<StandardError> tooManyRequests(TooManyRequestsException e, HttpServletRequest request) {
+        StandardError erro = new StandardError();
+        erro.setTimestamp(Instant.now());
+        erro.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+        erro.setError("Muitas tentativas");
+        erro.setMessage(e.getMessage());
+        erro.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(erro);
     }
 
     @ExceptionHandler(HttpClientErrorException.NotFound.class)

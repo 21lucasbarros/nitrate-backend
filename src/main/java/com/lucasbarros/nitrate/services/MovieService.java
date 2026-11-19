@@ -64,16 +64,6 @@ public class MovieService {
     @Autowired
     private ReviewRepository reviewRepository;
 
-    @Transactional(readOnly = true)
-    public List<MovieDTO> buscarTodos() {
-        List<Movie> filmes = movieRepository.findAll();
-        List<MovieDTO> dtos = new ArrayList<>();
-        for(Movie filme : filmes) {
-            dtos.add(new MovieDTO(filme));
-        }
-        return dtos;
-    }
-
     /** os filmes que mais gente registrou nos últimos dias; com pouca atividade recente, de todos os tempos */
     @Transactional(readOnly = true)
     public List<MovieDTO> emAltaNaComunidade() {

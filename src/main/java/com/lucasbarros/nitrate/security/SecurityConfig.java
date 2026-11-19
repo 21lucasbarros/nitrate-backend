@@ -22,6 +22,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -36,6 +37,9 @@ public class SecurityConfig {
 
     @Autowired
     private CustomUserDetailsService userDetailsService;
+
+    @Autowired
+    private RateLimiter rateLimiter;
 
     // origens do front separadas por vírgula; aceita curingas para os previews da Vercel
     // (ex.: "https://nitrate.vercel.app,https://nitrate-*.vercel.app")
@@ -90,6 +94,8 @@ public class SecurityConfig {
                 // sem sessão válida responde 401 (o padrão do Spring seria 403)
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authenticationProvider(authenticationProvider())
+                // limite de tentativas logo depois do CORS: o 429 sai com os headers de CORS
+                .addFilterAfter(new RateLimitFilter(rateLimiter), CorsFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

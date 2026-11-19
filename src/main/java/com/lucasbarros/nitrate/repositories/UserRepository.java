@@ -14,6 +14,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
     boolean existsByEmail(String email);
     boolean existsByUsername(String username);
+    // e-mail sem diferenciar maiúsculas: "Ana@x.com" e "ana@x.com" são a mesma conta
+    Optional<User> findFirstByEmailIgnoreCase(String email);
+    boolean existsByEmailIgnoreCase(String email);
 
     // busca por nome de usuário ou nome; quem começa com o termo vem antes.
     // `termo` chega com \, % e _ escapados (ver SocialService.pesquisarUsuarios)

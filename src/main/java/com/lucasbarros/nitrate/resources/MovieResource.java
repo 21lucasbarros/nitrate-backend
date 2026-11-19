@@ -28,14 +28,6 @@ public class MovieResource {
     @Autowired
     private ReviewService reviewService;
 
-    // o acervo inteiro de uma vez: pesado e crescendo todo dia. Fica só para o front antigo
-    // enquanto o novo (que usa /movies/catalog) não estiver no ar; depois pode sair.
-    @Deprecated
-    @GetMapping
-    public List<MovieDTO> buscarTodos() {
-        return movieService.buscarTodos();
-    }
-
     @GetMapping(value = "/catalog")
     public PageDTO<MovieDTO> catalogo(@RequestParam(defaultValue = "0") int page,
                                       @RequestParam(defaultValue = "48") int size) {
