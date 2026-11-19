@@ -7,10 +7,12 @@ import com.lucasbarros.nitrate.dto.UserSummaryDTO;
 import com.lucasbarros.nitrate.entities.FavoriteFilm;
 import com.lucasbarros.nitrate.entities.Follow;
 import com.lucasbarros.nitrate.entities.Movie;
+import com.lucasbarros.nitrate.entities.Notification;
 import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.repositories.FavoriteFilmRepository;
 import com.lucasbarros.nitrate.repositories.FollowRepository;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
+import com.lucasbarros.nitrate.repositories.NotificationRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
@@ -39,6 +41,7 @@ public class SocialService {
     @Autowired private FavoriteFilmRepository favoriteFilmRepository;
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private MovieRepository movieRepository;
+    @Autowired private NotificationRepository notificationRepository;
 
     // idempotente: seguir quem já segue não faz nada
     @Transactional
@@ -49,13 +52,17 @@ public class SocialService {
         }
         if (!followRepository.existsByFollowerAndFollowed(eu, alvo)) {
             followRepository.save(new Follow(eu, alvo));
+            notificationRepository.save(Notification.follow(alvo, eu));
         }
     }
 
     @Transactional
     public void deixarDeSeguir(User eu, String username) {
         User alvo = buscarPorUsername(username);
-        followRepository.findByFollowerAndFollowed(eu, alvo).ifPresent(followRepository::delete);
+        followRepository.findByFollowerAndFollowed(eu, alvo).ifPresent(follow -> {
+            followRepository.delete(follow);
+            notificationRepository.deleteByUserAndActorAndType(alvo, eu, Notification.Type.FOLLOW);
+        });
     }
 
     @Transactional(readOnly = true)

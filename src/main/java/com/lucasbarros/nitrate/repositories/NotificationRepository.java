@@ -21,7 +21,14 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("update Notification n set n.readAt = :agora where n.user = :user and n.readAt is null")
     int marcarTodasComoLidas(@Param("user") User user, @Param("agora") Instant agora);
 
+    // deixar de seguir apaga o aviso: seguir e desseguir várias vezes não enche o sino
     @Modifying
-    @Query("delete from Notification n where n.user = :user")
+    @Query("delete from Notification n where n.user = :user and n.actor = :actor and n.type = :type")
+    void deleteByUserAndActorAndType(@Param("user") User user, @Param("actor") User actor,
+                                     @Param("type") Notification.Type type);
+
+    // exclusão de conta: os avisos da pessoa e os que ela gerou para outros
+    @Modifying
+    @Query("delete from Notification n where n.user = :user or n.actor = :user")
     void deleteAllByUser(@Param("user") User user);
 }

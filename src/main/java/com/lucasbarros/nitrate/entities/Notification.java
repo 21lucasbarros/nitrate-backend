@@ -6,7 +6,10 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
 
-/** Aviso do Radar de Estreias: um filme da watchlist chegou aos cinemas ou ao streaming. */
+/**
+ * Aviso para a pessoa: um filme da watchlist chegou aos cinemas ou ao streaming (Radar de
+ * Estreias), ou alguém começou a seguir ela.
+ */
 @Entity
 @Table(name = "tb_notification",
         // cada pessoa é avisada uma vez só de cada estreia de cada filme
@@ -15,7 +18,7 @@ import java.util.Objects;
 public class Notification implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public enum Type { CINEMA, STREAMING }
+    public enum Type { CINEMA, STREAMING, FOLLOW }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,9 +28,15 @@ public class Notification implements Serializable {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne(optional = false)
+    // nas estreias; nulo em FOLLOW
+    @ManyToOne
     @JoinColumn(name = "movie_id")
     private Movie movie;
+
+    // quem fez a ação (em FOLLOW, quem começou a seguir); nulo nas estreias
+    @ManyToOne
+    @JoinColumn(name = "actor_id")
+    private User actor;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -52,9 +61,18 @@ public class Notification implements Serializable {
         this.detail = detail;
     }
 
+    public static Notification follow(User seguido, User seguidor) {
+        Notification n = new Notification();
+        n.user = seguido;
+        n.actor = seguidor;
+        n.type = Type.FOLLOW;
+        return n;
+    }
+
     public Long getId() { return id; }
     public User getUser() { return user; }
     public Movie getMovie() { return movie; }
+    public User getActor() { return actor; }
     public Type getType() { return type; }
     public String getDetail() { return detail; }
     public Instant getCreatedAt() { return createdAt; }

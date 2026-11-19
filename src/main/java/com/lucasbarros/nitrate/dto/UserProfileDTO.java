@@ -22,9 +22,12 @@ public class UserProfileDTO {
     private List<MovieDTO> favorites;
     // se quem está vendo segue este perfil; nulo para visitantes e no próprio perfil
     private Boolean followedByMe;
+    // se este perfil segue quem está vendo ("Segue você"); nulo para visitantes e no próprio perfil
+    private Boolean followsMe;
 
     public UserProfileDTO(User user, long filmsCount, long reviewsCount, long likesCount, long watchlistCount,
-                          long followersCount, long followingCount, List<MovieDTO> favorites, Boolean followedByMe) {
+                          long followersCount, long followingCount, List<MovieDTO> favorites, Boolean followedByMe,
+                          Boolean followsMe) {
         this.username = user.getUsername();
         this.name = user.getName();
         this.avatar = user.getAvatarPath();
@@ -40,6 +43,7 @@ public class UserProfileDTO {
         this.followingCount = followingCount;
         this.favorites = favorites;
         this.followedByMe = followedByMe;
+        this.followsMe = followsMe;
     }
 
     public String getUsername() { return username; }
@@ -57,4 +61,5 @@ public class UserProfileDTO {
     public long getFollowingCount() { return followingCount; }
     public List<MovieDTO> getFavorites() { return favorites; }
     public Boolean getFollowedByMe() { return followedByMe; }
+    public Boolean getFollowsMe() { return followsMe; }
 }

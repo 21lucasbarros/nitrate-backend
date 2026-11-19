@@ -50,5 +50,26 @@ public class SchemaAdjustments implements ApplicationRunner {
             jdbc.execute("alter table tb_review drop constraint \"" + nome.replace("\"", "\"\"") + "\"");
             log.info("restrição única {} removida de tb_review (reviews de reassistidos)", nome);
         }
+
+        // notificações de "começou a seguir" não têm filme: movie_id deixou de ser obrigatório
+        List<String> filmeObrigatorio = jdbc.queryForList(
+                "select is_nullable from information_schema.columns " +
+                "where table_name = 'tb_notification' and column_name = 'movie_id'", String.class);
+        if (!filmeObrigatorio.isEmpty() && "NO".equals(filmeObrigatorio.get(0))) {
+            jdbc.execute("alter table tb_notification alter column movie_id drop not null");
+            log.info("tb_notification.movie_id agora aceita nulo (notificações de seguidor)");
+        }
+
+        // o Hibernate criou um check com os valores do enum (CINEMA, STREAMING) e não o atualiza;
+        // sem removê-lo, o tipo FOLLOW seria recusado pelo banco
+        List<String> checks = jdbc.queryForList(
+                "select conname from pg_constraint where conrelid = 'tb_notification'::regclass " +
+                "and contype = 'c' and pg_get_constraintdef(oid) like '%STREAMING%' " +
+                "and pg_get_constraintdef(oid) not like '%FOLLOW%'",
+                String.class);
+        for (String nome : checks) {
+            jdbc.execute("alter table tb_notification drop constraint \"" + nome.replace("\"", "\"\"") + "\"");
+            log.info("check {} removido de tb_notification (novo tipo FOLLOW)", nome);
+        }
     }
 }
