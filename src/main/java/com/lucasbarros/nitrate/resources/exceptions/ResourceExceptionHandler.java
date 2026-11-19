@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import org.springframework.security.core.AuthenticationException;
 import java.time.Instant;
@@ -118,5 +119,16 @@ public class ResourceExceptionHandler {
         erro.setMessage(e.getMessage());
         erro.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<StandardError> arquivoGrandeDemais(MaxUploadSizeExceededException e, HttpServletRequest request) {
+        StandardError erro = new StandardError();
+        erro.setTimestamp(Instant.now());
+        erro.setStatus(HttpStatus.CONTENT_TOO_LARGE.value());
+        erro.setError("Arquivo grande demais");
+        erro.setMessage("A imagem pode ter até 5 MB.");
+        erro.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).body(erro);
     }
 }

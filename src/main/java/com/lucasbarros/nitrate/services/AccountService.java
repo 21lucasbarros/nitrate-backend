@@ -15,6 +15,7 @@ import com.lucasbarros.nitrate.repositories.NotificationRepository;
 import com.lucasbarros.nitrate.repositories.ReviewCommentRepository;
 import com.lucasbarros.nitrate.repositories.ReviewLikeRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
+import com.lucasbarros.nitrate.repositories.UserAvatarRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.repositories.WatchlistRepository;
 import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
@@ -41,6 +42,7 @@ public class AccountService {
     private static final Pattern PREFIXO_INSTAGRAM = Pattern.compile("^(https?://)?(www\\.)?instagram\\.com/", Pattern.CASE_INSENSITIVE);
 
     @Autowired private UserRepository userRepository;
+    @Autowired private UserAvatarRepository userAvatarRepository;
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private WatchlistRepository watchlistRepository;
     @Autowired private FavoriteFilmRepository favoriteFilmRepository;
@@ -85,7 +87,7 @@ public class AccountService {
 
     /**
      * Exclusão definitiva (LGPD, art. 18, VI): apaga a conta e tudo ligado a ela — diário,
-     * reviews, curtidas e comentários, watchlist, favoritos, listas, quem segue e quem é seguido, notificações. Não há como desfazer.
+     * reviews, curtidas e comentários, watchlist, favoritos, listas, quem segue e quem é seguido, notificações e a foto de perfil. Não há como desfazer.
      */
     @Transactional
     public void excluirConta(User user, String senha) {
@@ -103,6 +105,7 @@ public class AccountService {
         watchlistRepository.deleteAllByUser(salvo);
         reviewRepository.deleteAllByUser(salvo);
         followRepository.deleteAllInvolving(salvo);
+        userAvatarRepository.findById(salvo.getId()).ifPresent(userAvatarRepository::delete);
         userRepository.delete(salvo);
     }
 

@@ -23,6 +23,7 @@ import com.lucasbarros.nitrate.dto.UserSummaryDTO;
 import com.lucasbarros.nitrate.dto.WatchlistItemDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
 import com.lucasbarros.nitrate.services.AccountService;
+import com.lucasbarros.nitrate.services.AvatarService;
 import com.lucasbarros.nitrate.services.FavoritePeopleService;
 import com.lucasbarros.nitrate.services.FriendsService;
 import com.lucasbarros.nitrate.services.MovieListService;
@@ -32,13 +33,17 @@ import com.lucasbarros.nitrate.services.RetrospectiveService;
 import com.lucasbarros.nitrate.services.SocialService;
 import com.lucasbarros.nitrate.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/users")
@@ -71,6 +76,9 @@ public class UserResource {
     @Autowired
     private FavoritePeopleService favoritePeopleService;
 
+    @Autowired
+    private AvatarService avatarService;
+
     @GetMapping("/me")
     public UserProfileDTO me(@AuthenticationPrincipal CustomUserDetails principal) {
         return userService.perfil(principal.getUser());
@@ -80,6 +88,18 @@ public class UserResource {
     public UserProfileDTO atualizarPerfil(@AuthenticationPrincipal CustomUserDetails principal,
                                           @RequestBody ProfileUpdateDTO request) {
         return accountService.atualizarPerfil(principal.getUser(), request);
+    }
+
+    // foto de perfil: multipart com o campo "file" (JPG ou PNG); o servidor recorta e reduz
+    @PutMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public UserProfileDTO trocarFoto(@AuthenticationPrincipal CustomUserDetails principal,
+                                     @RequestParam("file") MultipartFile file) {
+        return avatarService.salvar(principal.getUser(), file);
+    }
+
+    @DeleteMapping("/me/avatar")
+    public UserProfileDTO removerFoto(@AuthenticationPrincipal CustomUserDetails principal) {
+        return avatarService.remover(principal.getUser());
     }
 
     // LGPD: cópia dos dados (acesso/portabilidade) e exclusão definitiva da conta
@@ -193,6 +213,16 @@ public class UserResource {
                                                @PathVariable String username) {
         socialService.deixarDeSeguir(principal.getUser(), username);
         return ResponseEntity.noContent().build();
+    }
+
+    // a URL leva a versão (?v=), então a resposta pode ficar em cache para sempre
+    @GetMapping("/{username}/avatar")
+    public ResponseEntity<byte[]> foto(@PathVariable String username) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(avatarService.imagem(username));
     }
 
     @GetMapping("/{username}/followers")

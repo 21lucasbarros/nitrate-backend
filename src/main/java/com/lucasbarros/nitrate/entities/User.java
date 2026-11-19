@@ -40,6 +40,9 @@ public class User implements Serializable {
     @Column(length = 30)
     private String instagram;
 
+    // quando a foto de perfil mudou pela última vez; nulo = sem foto (os bytes ficam em UserAvatar)
+    private Instant avatarUpdatedAt;
+
     public User() {
     }
 
@@ -76,6 +79,14 @@ public class User implements Serializable {
 
     public String getInstagram() { return instagram; }
     public void setInstagram(String instagram) { this.instagram = instagram; }
+
+    public Instant getAvatarUpdatedAt() { return avatarUpdatedAt; }
+    public void setAvatarUpdatedAt(Instant avatarUpdatedAt) { this.avatarUpdatedAt = avatarUpdatedAt; }
+
+    /** caminho da foto na API, com a versão na URL para o cache; nulo sem foto */
+    public String getAvatarPath() {
+        return avatarUpdatedAt == null ? null : "/users/" + username + "/avatar?v=" + avatarUpdatedAt.toEpochMilli();
+    }
 
     @Override
     public boolean equals(Object o) {

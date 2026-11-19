@@ -8,6 +8,7 @@ import java.util.List;
 public class UserProfileDTO {
     private String username;
     private String name;
+    private String avatar; // caminho da foto na API; nulo sem foto
     private Instant createdAt;
     private String bio;
     private String twitter;
@@ -26,6 +27,7 @@ public class UserProfileDTO {
                           long followersCount, long followingCount, List<MovieDTO> favorites, Boolean followedByMe) {
         this.username = user.getUsername();
         this.name = user.getName();
+        this.avatar = user.getAvatarPath();
         this.createdAt = user.getCreatedAt();
         this.bio = user.getBio();
         this.twitter = user.getTwitter();
@@ -42,6 +44,7 @@ public class UserProfileDTO {
 
     public String getUsername() { return username; }
     public String getName() { return name; }
+    public String getAvatar() { return avatar; }
     public Instant getCreatedAt() { return createdAt; }
     public String getBio() { return bio; }
     public String getTwitter() { return twitter; }

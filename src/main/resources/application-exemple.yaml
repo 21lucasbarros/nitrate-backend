@@ -9,6 +9,12 @@ spring:
     username: SEU_USUARIO
     password: SUA_SENHA
 
+  # foto de perfil: o front já manda reduzida, mas o app/celular pode enviar a original
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
   jpa:
     hibernate:
       ddl-auto: update
