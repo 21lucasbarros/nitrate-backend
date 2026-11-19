@@ -54,8 +54,19 @@ public class MovieSlugService implements ApplicationRunner {
         log.info("slug gerado para {} filme(s)", semSlug.size());
     }
 
+    /** "Até o Último Homem!" → "ate-o-ultimo-homem"; vazio se não sobrar nenhuma letra latina */
+    public static String slugify(String texto, int tamanhoMax) {
+        String slug = Normalizer.normalize(texto == null ? "" : texto, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")      // remove acentos
+                .toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-") // o resto vira hífen
+                .replaceAll("(^-+|-+$)", "");
+        if (slug.length() > tamanhoMax) slug = slug.substring(0, tamanhoMax).replaceAll("-+$", "");
+        return slug;
+    }
+
     // títulos repetidos no mesmo ano: superman-2025, superman-2025-2, ...
-    private static String livre(String base, Predicate<String> emUso) {
+    public static String livre(String base, Predicate<String> emUso) {
         String slug = base;
         for (int i = 2; emUso.test(slug); i++) {
             slug = base + "-" + i;
@@ -64,12 +75,7 @@ public class MovieSlugService implements ApplicationRunner {
     }
 
     static String base(Movie filme) {
-        String texto = Normalizer.normalize(filme.getTitle() == null ? "" : filme.getTitle(), Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")      // remove acentos
-                .toLowerCase()
-                .replaceAll("[^a-z0-9]+", "-") // o resto vira hífen
-                .replaceAll("(^-+|-+$)", "");
-        if (texto.length() > TAMANHO_MAX) texto = texto.substring(0, TAMANHO_MAX).replaceAll("-+$", "");
+        String texto = slugify(filme.getTitle(), TAMANHO_MAX);
         // títulos sem letras latinas (ex.: japonês) usam o id do TMDB
         if (texto.isEmpty()) texto = "filme-" + filme.getTmdbId();
         return filme.getReleaseYear() == null ? texto : texto + "-" + filme.getReleaseYear();

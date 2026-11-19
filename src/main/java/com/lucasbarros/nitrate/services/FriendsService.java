@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.dto.ActivityDTO;
 import com.lucasbarros.nitrate.dto.ActivityDTO.Type;
 import com.lucasbarros.nitrate.dto.ActivityPageDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
+import com.lucasbarros.nitrate.dto.ListEngagementDTO;
 import com.lucasbarros.nitrate.dto.MovieListDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
 import com.lucasbarros.nitrate.dto.UserSummaryDTO;
@@ -78,7 +79,7 @@ public class FriendsService {
                 null, new MovieDTO(w.getMovie()), null, null, null, null, null)));
         movieListRepository.findAtividade(eu, cursor, pagina).forEach(l -> itens.add(new ActivityDTO(
                 Type.LIST, "list-" + l.getId(), l.getCreatedAt(), new UserSummaryDTO(l.getUser()),
-                null, null, MovieListDTO.resumo(l, null), null, null, null, null)));
+                null, null, MovieListDTO.resumo(l, ListEngagementDTO.VAZIO), null, null, null, null)));
         reviewLikeRepository.findAtividade(eu, cursor, pagina).forEach(l -> itens.add(new ActivityDTO(
                 Type.REVIEW_LIKE, "like-" + l.getId(), l.getCreatedAt(), new UserSummaryDTO(l.getUser()),
                 new ReviewDTO(l.getReview()), null, null, null, null, null, null)));

@@ -10,7 +10,9 @@ import java.util.Objects;
 
 /** Uma lista criada pela pessoa (maratona, retrospectiva de diretor, coleção...). Pública ou privada. */
 @Entity
-@Table(name = "tb_movie_list")
+@Table(name = "tb_movie_list",
+        // o endereço é /u/{dona}/lista/{slug}: o slug só precisa ser único entre as listas da pessoa
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "slug"}))
 public class MovieList implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -24,6 +26,10 @@ public class MovieList implements Serializable {
 
     @Column(nullable = false)
     private String name;
+
+    // "filmes-do-mesmo-universo"; acompanha o nome quando ele muda
+    @Column(length = 100)
+    private String slug;
 
     @Column(columnDefinition = "text")
     private String description;
@@ -54,6 +60,9 @@ public class MovieList implements Serializable {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public String getSlug() { return slug; }
+    public void setSlug(String slug) { this.slug = slug; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

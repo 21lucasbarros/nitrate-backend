@@ -27,6 +27,7 @@ import com.lucasbarros.nitrate.services.AccountService;
 import com.lucasbarros.nitrate.services.AvatarService;
 import com.lucasbarros.nitrate.services.FavoritePeopleService;
 import com.lucasbarros.nitrate.services.FriendsService;
+import com.lucasbarros.nitrate.services.ListSocialService;
 import com.lucasbarros.nitrate.services.MovieListService;
 import com.lucasbarros.nitrate.services.NotificationService;
 import com.lucasbarros.nitrate.services.RecommendationService;
@@ -71,6 +72,9 @@ public class UserResource {
 
     @Autowired
     private MovieListService movieListService;
+
+    @Autowired
+    private ListSocialService listSocialService;
 
     @Autowired
     private FriendsService friendsService;
@@ -176,6 +180,12 @@ public class UserResource {
         return movieListService.minhasListas(principal.getUser(), movieId);
     }
 
+    // listas de outras pessoas que salvei
+    @GetMapping("/me/saved-lists")
+    public List<MovieListDTO> listasSalvas(@AuthenticationPrincipal CustomUserDetails principal) {
+        return listSocialService.salvas(principal.getUser());
+    }
+
     // página "Amigos": o feed de atividade meu e de quem eu sigo; `before` pede a próxima página
     @GetMapping("/me/friends/feed")
     public ActivityPageDTO feedDosAmigos(@AuthenticationPrincipal CustomUserDetails principal,
@@ -271,6 +281,14 @@ public class UserResource {
     public List<MovieListDTO> listas(@AuthenticationPrincipal CustomUserDetails principal,
                                      @PathVariable String username) {
         return movieListService.listasDoUsuario(username, principal == null ? null : principal.getUser());
+    }
+
+    // rota pública: a página da lista (/u/{username}/lista/{slug} no front); privadas só para a dona
+    @GetMapping("/{username}/lists/{slug}")
+    public MovieListDTO lista(@AuthenticationPrincipal CustomUserDetails principal,
+                              @PathVariable String username,
+                              @PathVariable String slug) {
+        return movieListService.buscarPorSlug(username, slug, principal == null ? null : principal.getUser());
     }
 
     // a retrospectiva é exclusiva de quem é dono do diário: só existe em /users/me
