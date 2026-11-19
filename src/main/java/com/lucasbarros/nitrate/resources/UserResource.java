@@ -41,6 +41,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.text.Normalizer;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -192,7 +193,7 @@ public class UserResource {
     // literal: tem prioridade sobre /{username} ("search" é um nome reservado no cadastro)
     @GetMapping("/search")
     public List<UserSummaryDTO> pesquisar(@RequestParam(defaultValue = "") String q) {
-        return socialService.pesquisarUsuarios(q);
+        return socialService.pesquisarUsuarios(Normalizer.normalize(q, Normalizer.Form.NFC));
     }
 
     // rota pública; com token, diz também se quem vê segue o perfil

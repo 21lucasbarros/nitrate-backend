@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.text.Normalizer;
 import java.util.List;
 
 @RestController
@@ -57,7 +58,7 @@ public class MovieResource {
 
     @GetMapping(value = "/search")
     public List<MovieSearchResultDTO> pesquisar(@RequestParam(defaultValue = "") String q) {
-        return movieService.pesquisar(q);
+        return movieService.pesquisar(Normalizer.normalize(q, Normalizer.Form.NFC));
     }
 
     // abre um filme do TMDB: importa pro banco na primeira vez e devolve o filme local

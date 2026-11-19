@@ -6,6 +6,7 @@ import com.lucasbarros.nitrate.services.PersonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.Normalizer;
 import java.util.List;
 
 @RestController
@@ -17,7 +18,7 @@ public class PersonResource {
 
     @GetMapping("/search")
     public List<PersonSummaryDTO> pesquisar(@RequestParam(defaultValue = "") String q) {
-        return personService.pesquisar(q);
+        return personService.pesquisar(Normalizer.normalize(q, Normalizer.Form.NFC));
     }
 
     @GetMapping("/{tmdbId}")

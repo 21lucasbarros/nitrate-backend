@@ -33,12 +33,25 @@ public class PersonService {
         }
         for (TmdbPersonSearchResponseDTO.Result pessoa : tmdbClient.pesquisarPessoas(termo.trim()).getResults()) {
             // não filtramos por departamento: muitos diretores (ex.: James Gunn) estão como "Writing".
-            // descartamos homônimos obscuros (pouca popularidade no TMDB)
-            if (pessoa.getPopularity() >= POPULARIDADE_MINIMA) {
+            if (relevante(pessoa)) {
                 resultados.add(new PersonSummaryDTO(pessoa));
             }
         }
         return resultados;
+    }
+
+    /**
+     * Descarta homônimos obscuros. Só a popularidade não basta: na escala atual do TMDB muita
+     * gente conhecida fica abaixo do mínimo (ex.: Ingrid Guimarães), então quem tem foto e
+     * algum filme no "conhecido por" também entra.
+     */
+    private boolean relevante(TmdbPersonSearchResponseDTO.Result pessoa) {
+        if (pessoa.getPopularity() >= POPULARIDADE_MINIMA) return true;
+        if (pessoa.getProfilePath() == null) return false;
+        for (TmdbPersonSearchResponseDTO.KnownFor obra : pessoa.getKnownFor()) {
+            if ("movie".equals(obra.getMediaType())) return true;
+        }
+        return false;
     }
 
     public PersonDetailDTO detalhe(Long personId) {
