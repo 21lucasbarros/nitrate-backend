@@ -57,7 +57,7 @@ public class MovieListService implements ApplicationRunner {
     /** as listas do perfil: quem vê o próprio perfil vê também as privadas */
     @Transactional(readOnly = true)
     public List<MovieListDTO> listasDoUsuario(String username, User quemVe) {
-        User dono = userRepository.findByUsername(username.toLowerCase().trim())
+        User dono = userRepository.findFirstByUsernameIgnoreCase(username.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + username));
         List<MovieList> listas = ehDono(dono, quemVe)
                 ? movieListRepository.findByUserOrderByUpdatedAtDesc(dono)
@@ -83,7 +83,7 @@ public class MovieListService implements ApplicationRunner {
     /** a página da lista: /u/{username}/lista/{slug} */
     @Transactional(readOnly = true)
     public MovieListDTO buscarPorSlug(String username, String slug, User quemVe) {
-        MovieList lista = userRepository.findByUsername(username.toLowerCase().trim())
+        MovieList lista = userRepository.findFirstByUsernameIgnoreCase(username.trim())
                 .flatMap(dono -> movieListRepository.findByUserAndSlug(dono, slug))
                 // privada de outra pessoa: responde como se não existisse, para não revelar que ela existe
                 .filter(l -> l.isPublicList() || ehDono(l.getUser(), quemVe))

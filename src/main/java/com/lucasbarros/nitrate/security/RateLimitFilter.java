@@ -15,7 +15,7 @@ import java.time.Instant;
 
 /**
  * Limite por IP nas rotas públicas que dá para abusar: login e cadastro (força bruta e contas
- * em massa) e as que chamam o TMDB sem login (gastam a cota da chave e importam filmes no banco).
+ * em massa), redefinição de senha (e-mails em massa e tokens tentados às cegas) e as que chamam o TMDB sem login (gastam a cota da chave e importam filmes no banco).
  * O limite por conta no login, que não depende do IP, fica no AuthService.
  *
  * Não é @Component de propósito: o Spring Boot registraria o filtro também fora da cadeia de
@@ -29,6 +29,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Regra LOGIN = new Regra("login", 20, Duration.ofMinutes(1));
     private static final Regra CADASTRO = new Regra("cadastro", 5, Duration.ofHours(1));
     private static final Regra TMDB = new Regra("tmdb", 60, Duration.ofMinutes(1));
+    // cada pedido pode disparar um e-mail; tentar tokens às cegas também esbarra aqui
+    private static final Regra ESQUECI_SENHA = new Regra("esqueci-senha", 5, Duration.ofHours(1));
+    private static final Regra REDEFINIR_SENHA = new Regra("redefinir-senha", 10, Duration.ofMinutes(15));
 
     private final RateLimiter rateLimiter;
 
@@ -59,6 +62,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String caminho = request.getRequestURI();
         if ("POST".equals(metodo) && caminho.equals("/auth/login")) return LOGIN;
         if ("POST".equals(metodo) && caminho.equals("/auth/register")) return CADASTRO;
+        if ("POST".equals(metodo) && caminho.equals("/auth/forgot-password")) return ESQUECI_SENHA;
+        if ("POST".equals(metodo) && caminho.equals("/auth/reset-password")) return REDEFINIR_SENHA;
         // busca e importação sob demanda no TMDB (o resto de /movies e /people lê só o banco)
         if ("GET".equals(metodo) && (caminho.equals("/movies/search") || caminho.startsWith("/movies/tmdb/")
                 || caminho.startsWith("/people/"))) {

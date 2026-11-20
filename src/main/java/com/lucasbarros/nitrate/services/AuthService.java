@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -27,7 +28,7 @@ import java.util.regex.Pattern;
 @Service
 public class AuthService {
 
-    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-z0-9_]{3,20}$");
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9_]{3,20}$");
     // nomes que são rotas de /users/... e não podem virar perfil
     private static final Set<String> USERNAMES_RESERVADOS = Set.of("me", "search");
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
@@ -35,6 +36,7 @@ public class AuthService {
     private static final int EMAIL_MAX = 254;
     private static final int SENHA_MIN = 8;
     private static final int SENHA_MAX_BYTES = 72; // o bcrypt ignora o que passar disso
+    private static final int IDADE_MINIMA = 13; // igual aos Termos de Uso do front (MIN_AGE)
 
     // força bruta numa conta: senhas erradas seguidas bloqueiam o login dela por um tempo,
     // não importa de quantos IPs venham (o limite por IP fica no RateLimitFilter)
@@ -49,39 +51,37 @@ public class AuthService {
 
     public AuthResponseDTO registrar(RegisterRequestDTO request) {
         String nome = request.getName() == null ? "" : request.getName().trim();
-        String username = request.getUsername() == null ? "" : request.getUsername().toLowerCase(Locale.ROOT).trim();
+        String username = request.getUsername() == null ? "" : request.getUsername().trim();
         String email = request.getEmail() == null ? "" : request.getEmail().trim().toLowerCase(Locale.ROOT);
         String senha = request.getPassword() == null ? "" : request.getPassword();
 
         if (nome.isEmpty()) throw new IllegalArgumentException("Informe seu nome.");
         if (nome.length() > NOME_MAX) throw new IllegalArgumentException("O nome pode ter até " + NOME_MAX + " caracteres.");
 
-        if (!USERNAME_PATTERN.matcher(username).matches()) {
-            throw new IllegalArgumentException(
-                    "Nome de usuário deve ter entre 3 e 20 caracteres, apenas letras minúsculas, números e _");
-        }
+        validarUsername(username);
 
         if (email.length() > EMAIL_MAX || !EMAIL_PATTERN.matcher(email).matches()) {
             throw new IllegalArgumentException("Informe um e-mail válido.");
         }
 
-        if (senha.length() < SENHA_MIN) {
-            throw new IllegalArgumentException("A senha precisa ter pelo menos " + SENHA_MIN + " caracteres.");
-        }
-        if (senha.getBytes(StandardCharsets.UTF_8).length > SENHA_MAX_BYTES) {
-            throw new IllegalArgumentException("A senha é longa demais.");
+        validarSenha(senha);
+
+        if (!Boolean.TRUE.equals(request.getAcceptedTerms())) {
+            throw new IllegalArgumentException(
+                    "Confirme que tem pelo menos " + IDADE_MINIMA + " anos e aceite os Termos de Uso e a Política de Privacidade.");
         }
 
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new EmailJaCadastradoException(email);
         }
 
-        if (USERNAMES_RESERVADOS.contains(username) || userRepository.existsByUsername(username)) {
+        if (usernameReservado(username) || userRepository.existsByUsernameIgnoreCase(username)) {
             throw new UsernameJaCadastradoException(username);
         }
 
         String senhaCriptografada = passwordEncoder.encode(senha);
         User user = new User(nome, username, email, senhaCriptografada);
+        user.setTermsAcceptedAt(Instant.now());
         user = userRepository.save(user);
 
         String token = jwtService.gerarToken(new CustomUserDetails(user));
@@ -104,15 +104,37 @@ public class AuthService {
         rateLimiter.zerar(chaveFalhas);
 
         User user = userRepository.findFirstByEmailIgnoreCase(login)
-                .or(() -> userRepository.findByUsername(login.toLowerCase(Locale.ROOT)))
+                .or(() -> userRepository.findFirstByUsernameIgnoreCase(login))
                 .orElseThrow();
 
         String token = jwtService.gerarToken(new CustomUserDetails(user));
         return new AuthResponseDTO(token, user.getName(), user.getUsername(), user.getEmail());
     }
 
+    /** formato do @, também usado ao trocar o @ no perfil (AccountService) */
+    static void validarUsername(String username) {
+        if (username == null || !USERNAME_PATTERN.matcher(username).matches()) {
+            throw new IllegalArgumentException(
+                    "Nome de usuário deve ter entre 3 e 20 caracteres, apenas letras, números e _");
+        }
+    }
+
+    static boolean usernameReservado(String username) {
+        return USERNAMES_RESERVADOS.contains(username.toLowerCase(Locale.ROOT));
+    }
+
+    /** regras de senha do cadastro, também usadas na redefinição e na troca de senha */
+    static void validarSenha(String senha) {
+        if (senha == null || senha.length() < SENHA_MIN) {
+            throw new IllegalArgumentException("A senha precisa ter pelo menos " + SENHA_MIN + " caracteres.");
+        }
+        if (senha.getBytes(StandardCharsets.UTF_8).length > SENHA_MAX_BYTES) {
+            throw new IllegalArgumentException("A senha é longa demais.");
+        }
+    }
+
     public boolean usernameDisponivel(String username) {
-        String limpo = username.toLowerCase().trim();
-        return !USERNAMES_RESERVADOS.contains(limpo) && !userRepository.existsByUsername(limpo);
+        String limpo = username.trim();
+        return !usernameReservado(limpo) && !userRepository.existsByUsernameIgnoreCase(limpo);
     }
 }

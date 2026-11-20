@@ -73,7 +73,7 @@ public class AvatarService {
 
     @Transactional(readOnly = true)
     public byte[] imagem(String username) {
-        return userRepository.findByUsername(username.toLowerCase().trim())
+        return userRepository.findFirstByUsernameIgnoreCase(username.trim())
                 .flatMap(u -> avatarRepository.findById(u.getId()))
                 .map(UserAvatar::getData)
                 .orElseThrow(() -> new ResourceNotFoundException("Sem foto de perfil."));

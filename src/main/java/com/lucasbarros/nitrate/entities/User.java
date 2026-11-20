@@ -43,6 +43,12 @@ public class User implements Serializable {
     // quando a foto de perfil mudou pela última vez; nulo = sem foto (os bytes ficam em UserAvatar)
     private Instant avatarUpdatedAt;
 
+    // última troca de senha; tokens JWT emitidos antes disso deixam de valer (ver JwtService)
+    private Instant passwordChangedAt;
+
+    // quando aceitou os Termos e a Política de Privacidade (com a idade mínima); nulo = conta anterior ao aceite
+    private Instant termsAcceptedAt;
+
     public User() {
     }
 
@@ -82,6 +88,12 @@ public class User implements Serializable {
 
     public Instant getAvatarUpdatedAt() { return avatarUpdatedAt; }
     public void setAvatarUpdatedAt(Instant avatarUpdatedAt) { this.avatarUpdatedAt = avatarUpdatedAt; }
+
+    public Instant getPasswordChangedAt() { return passwordChangedAt; }
+    public void setPasswordChangedAt(Instant passwordChangedAt) { this.passwordChangedAt = passwordChangedAt; }
+
+    public Instant getTermsAcceptedAt() { return termsAcceptedAt; }
+    public void setTermsAcceptedAt(Instant termsAcceptedAt) { this.termsAcceptedAt = termsAcceptedAt; }
 
     /** caminho da foto na API, com a versão na URL para o cache; nulo sem foto */
     public String getAvatarPath() {

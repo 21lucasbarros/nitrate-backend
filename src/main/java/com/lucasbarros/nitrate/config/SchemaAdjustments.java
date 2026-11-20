@@ -51,6 +51,10 @@ public class SchemaAdjustments implements ApplicationRunner {
             log.info("restrição única {} removida de tb_review (reviews de reassistidos)", nome);
         }
 
+        // o nome de usuário passou a aceitar maiúsculas: a unicidade continua sem diferenciá-las
+        // ("Ana" e "ana" não podem coexistir), garantida também pelo banco
+        jdbc.execute("create unique index if not exists ux_user_username_lower on tb_user (lower(username))");
+
         // notificações de "começou a seguir" não têm filme: movie_id deixou de ser obrigatório
         List<String> filmeObrigatorio = jdbc.queryForList(
                 "select is_nullable from information_schema.columns " +

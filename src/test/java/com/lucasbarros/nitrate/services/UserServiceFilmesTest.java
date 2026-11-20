@@ -61,7 +61,7 @@ class UserServiceFilmesTest {
 
     @BeforeEach
     void montarDiario() {
-        when(userRepository.findByUsername("ana")).thenReturn(Optional.of(user));
+        when(userRepository.findFirstByUsernameIgnoreCase("ana")).thenReturn(Optional.of(user));
         registro(duna, 3.0, false, LocalDate.of(2026, 1, 1));
         registro(duna, 4.5, true, LocalDate.of(2026, 6, 1)); // reassistido: este é o mais recente
         registro(alien, 5.0, true, LocalDate.of(2026, 3, 1));

@@ -40,3 +40,12 @@ admin:
 # opcional: padrão é http://localhost:3000
 # cors:
 #   allowed-origins: http://localhost:3000
+
+# opcional: sem RESEND_API_KEY, os e-mails não saem e o conteúdo (com o link de redefinir a
+# senha) aparece no log. O remetente de teste do Resend só entrega para o seu próprio e-mail.
+# resend:
+#   api-key: ${RESEND_API_KEY}
+# email:
+#   from: Nitrate <onboarding@resend.dev>
+# app:
+#   frontend-url: http://localhost:3000

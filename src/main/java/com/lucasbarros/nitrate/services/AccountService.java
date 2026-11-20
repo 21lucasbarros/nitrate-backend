@@ -1,6 +1,8 @@
 package com.lucasbarros.nitrate.services;
 
 import com.lucasbarros.nitrate.dto.AccountExportDTO;
+import com.lucasbarros.nitrate.dto.AuthResponseDTO;
+import com.lucasbarros.nitrate.dto.PasswordChangeDTO;
 import com.lucasbarros.nitrate.dto.ProfileUpdateDTO;
 import com.lucasbarros.nitrate.dto.UserProfileDTO;
 import com.lucasbarros.nitrate.entities.FavoritePerson;
@@ -12,18 +14,26 @@ import com.lucasbarros.nitrate.repositories.FavoritePersonRepository;
 import com.lucasbarros.nitrate.repositories.FollowRepository;
 import com.lucasbarros.nitrate.repositories.MovieListRepository;
 import com.lucasbarros.nitrate.repositories.NotificationRepository;
+import com.lucasbarros.nitrate.repositories.PasswordResetTokenRepository;
 import com.lucasbarros.nitrate.repositories.ReviewCommentRepository;
 import com.lucasbarros.nitrate.repositories.ReviewLikeRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.repositories.UserAvatarRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.repositories.WatchlistRepository;
+import com.lucasbarros.nitrate.security.CustomUserDetails;
+import com.lucasbarros.nitrate.security.JwtService;
+import com.lucasbarros.nitrate.security.RateLimiter;
 import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
+import com.lucasbarros.nitrate.services.exceptions.TooManyRequestsException;
+import com.lucasbarros.nitrate.services.exceptions.UsernameJaCadastradoException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.HtmlUtils;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -34,6 +44,9 @@ public class AccountService {
 
     private static final int NOME_MAX = 60;
     private static final int BIO_MAX = 300;
+    // a senha atual é conferida a cada tentativa: limita quem tenta adivinhá-la com uma sessão aberta
+    private static final int TROCAS_SENHA_MAX = 10;
+    private static final Duration JANELA_TROCAS_SENHA = Duration.ofMinutes(15);
     // regras dos próprios sites para nomes de usuário
     private static final Pattern TWITTER = Pattern.compile("^[A-Za-z0-9_]{1,15}$");
     private static final Pattern INSTAGRAM = Pattern.compile("^[A-Za-z0-9._]{1,30}$");
@@ -52,8 +65,12 @@ public class AccountService {
     @Autowired private MovieListRepository movieListRepository;
     @Autowired private ReviewLikeRepository reviewLikeRepository;
     @Autowired private ReviewCommentRepository reviewCommentRepository;
+    @Autowired private PasswordResetTokenRepository passwordResetTokenRepository;
     @Autowired private MovieListService movieListService;
     @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private JwtService jwtService;
+    @Autowired private RateLimiter rateLimiter;
+    @Autowired private EmailService emailService;
     @Autowired private UserService userService;
 
     @Transactional
@@ -78,6 +95,21 @@ public class AccountService {
 
         // o principal do token é uma cópia desanexada: atualiza a linha do banco
         User salvo = userRepository.findById(user.getId()).orElseThrow();
+
+        // trocar o @: mesmas regras do cadastro. O token guarda o e-mail, então a sessão continua valendo
+        if (dados.username() != null) {
+            String username = dados.username().trim();
+            if (!username.equals(salvo.getUsername())) {
+                AuthService.validarUsername(username);
+                // só mudar maiúsculas/minúsculas do próprio @ não esbarra nele mesmo
+                boolean outroPerfil = !username.equalsIgnoreCase(salvo.getUsername());
+                if (outroPerfil && (AuthService.usernameReservado(username) || userRepository.existsByUsernameIgnoreCase(username))) {
+                    throw new UsernameJaCadastradoException(username);
+                }
+                salvo.setUsername(username);
+            }
+        }
+
         salvo.setName(nome);
         salvo.setBio(bio);
         salvo.setTwitter(twitter);
@@ -86,8 +118,56 @@ public class AccountService {
     }
 
     /**
+     * Troca a senha sabendo a atual. Derruba as sessões abertas nos outros aparelhos e devolve um
+     * token novo para este continuar conectado.
+     */
+    @Transactional
+    public AuthResponseDTO trocarSenha(User user, PasswordChangeDTO dados) {
+        if (!rateLimiter.tentar("troca-senha:" + user.getId(), TROCAS_SENHA_MAX, JANELA_TROCAS_SENHA)) {
+            throw new TooManyRequestsException("Muitas tentativas de trocar a senha. Espere alguns minutos e tente de novo.");
+        }
+        User salvo = userRepository.findById(user.getId()).orElseThrow();
+        if (dados.currentPassword() == null || !passwordEncoder.matches(dados.currentPassword(), salvo.getPasswordHash())) {
+            throw new ForbiddenException("Senha atual incorreta.");
+        }
+        AuthService.validarSenha(dados.newPassword());
+        if (passwordEncoder.matches(dados.newPassword(), salvo.getPasswordHash())) {
+            throw new IllegalArgumentException("A nova senha precisa ser diferente da atual.");
+        }
+
+        salvo.setPasswordHash(passwordEncoder.encode(dados.newPassword()));
+        salvo.setPasswordChangedAt(Instant.now());
+        userRepository.save(salvo);
+        passwordResetTokenRepository.deleteAllByUser(salvo); // um link de redefinição pendente não vale mais
+
+        emailService.enviarEmSegundoPlano(salvo.getEmail(), "Sua senha do Nitrate foi alterada",
+                avisoSenhaAlteradaHtml(salvo.getName()), avisoSenhaAlteradaTexto(salvo.getName()));
+
+        String token = jwtService.gerarToken(new CustomUserDetails(salvo));
+        return new AuthResponseDTO(token, salvo.getName(), salvo.getUsername(), salvo.getEmail());
+    }
+
+    // se não foi a própria pessoa, o aviso é a chance de ela perceber e recuperar a conta
+    private static String avisoSenhaAlteradaTexto(String nome) {
+        return "Olá, " + nome + "!\n\n"
+                + "A senha da sua conta no Nitrate acabou de ser alterada, e as sessões abertas em outros aparelhos foram encerradas.\n\n"
+                + "Se não foi você, use \"Esqueci minha senha\" na tela de login para criar uma nova senha agora.";
+    }
+
+    private static String avisoSenhaAlteradaHtml(String nome) {
+        return """
+                <div style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #1a1b1e;">
+                  <p style="font-size: 20px; font-weight: 700; letter-spacing: -0.5px; text-transform: uppercase; margin: 0 0 24px;">Nitrate<span style="color: #FF7A33;">.</span></p>
+                  <p style="font-size: 16px; line-height: 1.6;">Olá, %s!</p>
+                  <p style="font-size: 16px; line-height: 1.6;">A senha da sua conta acabou de ser alterada, e as sessões abertas em outros aparelhos foram encerradas.</p>
+                  <p style="font-size: 14px; line-height: 1.6; color: #6b6f76;">Se não foi você, use <strong>Esqueci minha senha</strong> na tela de login para criar uma nova senha agora.</p>
+                </div>
+                """.formatted(HtmlUtils.htmlEscape(nome));
+    }
+
+    /**
      * Exclusão definitiva (LGPD, art. 18, VI): apaga a conta e tudo ligado a ela — diário,
-     * reviews, curtidas e comentários, watchlist, favoritos, listas, quem segue e quem é seguido, notificações e a foto de perfil. Não há como desfazer.
+     * reviews, curtidas e comentários, watchlist, favoritos, listas, quem segue e quem é seguido, notificações, pedidos de redefinição de senha e a foto de perfil. Não há como desfazer.
      */
     @Transactional
     public void excluirConta(User user, String senha) {
@@ -96,6 +176,7 @@ public class AccountService {
             throw new ForbiddenException("Senha incorreta.");
         }
         notificationRepository.deleteAllByUser(salvo);
+        passwordResetTokenRepository.deleteAllByUser(salvo);
         movieListService.excluirTodas(salvo);
         // antes das reviews: curtidas e comentários apontam para elas
         reviewLikeRepository.deleteAllInvolving(salvo);

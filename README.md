@@ -96,10 +96,14 @@ curl -X POST http://localhost:8080/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Lucas Barros",
+    "username": "lucas",
     "email": "lucas@example.com",
-    "password": "minha-senha"
+    "password": "minha-senha",
+    "acceptedTerms": true
   }'
 ```
+
+`acceptedTerms` precisa ser `true`: é a confirmação da idade mínima (13 anos) e do aceite dos Termos de Uso e da Política de Privacidade. A data do aceite fica guardada na conta.
 
 Resposta:
 
@@ -127,6 +131,36 @@ curl -X POST http://localhost:8080/auth/login \
 ```
 
 A resposta possui o mesmo formato do cadastro.
+
+### `POST /auth/forgot-password`
+
+Pede a redefinição de senha. Se houver conta com o e-mail, envia pelo Resend um link para `FRONTEND_URL/redefinir-senha?token=...`, que vale por 30 minutos e só pode ser usado uma vez. A resposta é sempre `204 No Content`, exista a conta ou não, para não revelar quem está cadastrado.
+
+```bash
+curl -X POST http://localhost:8080/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "lucas@example.com" }'
+```
+
+Sem `RESEND_API_KEY` (desenvolvimento), o e-mail não é enviado e o link aparece no log.
+
+### `POST /auth/reset-password`
+
+Troca a senha com o token do link. Responde `204`, ou `400` se o token for inválido ou tiver expirado. Os tokens JWT emitidos antes da troca deixam de valer, o que encerra as sessões abertas em outros aparelhos.
+
+```bash
+curl -X POST http://localhost:8080/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{ "token": "TOKEN_DO_LINK", "password": "nova-senha-123" }'
+```
+
+### `PUT /users/me/profile`
+
+Edita o perfil: `name`, `username`, `bio`, `twitter` e `instagram`. O `username` segue as regras do cadastro (letras maiúsculas ou minúsculas, números e `_`; "Ana" e "ana" contam como o mesmo @) e responde `409` se já estiver em uso; se vier nulo, o @ atual é mantido. Trocar o @ não encerra a sessão, porque o token guarda o e-mail.
+
+### `PUT /users/me/password`
+
+Troca a senha sabendo a atual: `{ "currentPassword": "...", "newPassword": "..." }`. Responde `403` se a senha atual estiver errada e `429` depois de 10 tentativas em 15 minutos. Encerra as sessões nos outros aparelhos, avisa por e-mail e devolve um token novo (mesmo formato do login) para quem trocou continuar conectado.
 
 ### `GET /movies`
 
@@ -284,6 +318,9 @@ A Vercel constrói o `Dockerfile` da raiz com o [Container Runtime](https://verc
 | `CRON_SECRET`          | segredo do `/admin/**`; a Vercel o envia nos Cron Jobs                      |
 | `CORS_ALLOWED_ORIGINS` | domínio(s) do front, ex.: `https://nitrate.vercel.app`                      |
 | `JWT_EXPIRATION_MS`    | opcional, padrão `86400000` (24h)                                           |
+| `RESEND_API_KEY`       | chave do [Resend](https://resend.com), para os e-mails de redefinir a senha |
+| `EMAIL_FROM`           | remetente de um domínio verificado no Resend, ex.: `Nitrate <nao-responda@seudominio.com>` |
+| `FRONTEND_URL`         | endereço do front, usado no link do e-mail, ex.: `https://nitrate.vercel.app` |
 
 3. No projeto do front, configure `NEXT_PUBLIC_API_URL` com a URL do backend.
 

@@ -2,6 +2,7 @@ package com.lucasbarros.nitrate.resources;
 
 import com.lucasbarros.nitrate.dto.AccountDeletionDTO;
 import com.lucasbarros.nitrate.dto.AccountExportDTO;
+import com.lucasbarros.nitrate.dto.AuthResponseDTO;
 import com.lucasbarros.nitrate.dto.FavoritePeopleDTO;
 import com.lucasbarros.nitrate.dto.FavoritePeopleRequestDTO;
 import com.lucasbarros.nitrate.dto.FilmDTO;
@@ -14,6 +15,7 @@ import com.lucasbarros.nitrate.dto.MovieListDTO;
 import com.lucasbarros.nitrate.dto.MovieUserStateDTO;
 import com.lucasbarros.nitrate.dto.NotificationDTO;
 import com.lucasbarros.nitrate.dto.PageDTO;
+import com.lucasbarros.nitrate.dto.PasswordChangeDTO;
 import com.lucasbarros.nitrate.dto.ProfileUpdateDTO;
 import com.lucasbarros.nitrate.dto.RecommendationResultDTO;
 import com.lucasbarros.nitrate.dto.RetrospectiveDTO;
@@ -94,6 +96,13 @@ public class UserResource {
     public UserProfileDTO atualizarPerfil(@AuthenticationPrincipal CustomUserDetails principal,
                                           @RequestBody ProfileUpdateDTO request) {
         return accountService.atualizarPerfil(principal.getUser(), request);
+    }
+
+    /** devolve um token novo: os anteriores, inclusive o desta requisição, deixam de valer */
+    @PutMapping("/me/password")
+    public AuthResponseDTO trocarSenha(@AuthenticationPrincipal CustomUserDetails principal,
+                                       @RequestBody PasswordChangeDTO request) {
+        return accountService.trocarSenha(principal.getUser(), request);
     }
 
     // foto de perfil: multipart com o campo "file" (JPG ou PNG); o servidor recorta e reduz

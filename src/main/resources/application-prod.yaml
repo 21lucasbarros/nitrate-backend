@@ -46,3 +46,13 @@ cors:
 
 admin:
   secret: ${CRON_SECRET}          # protege /admin/**; a Vercel envia nos Cron Jobs
+
+# e-mails (redefinição de senha) pelo Resend. EMAIL_FROM precisa ser de um domínio verificado
+# no Resend, ex.: "Nitrate <nao-responda@seudominio.com>"
+resend:
+  api-key: ${RESEND_API_KEY}
+email:
+  from: ${EMAIL_FROM}
+
+app:
+  frontend-url: ${FRONTEND_URL}   # ex.: https://nitrate.vercel.app (vai no link do e-mail)

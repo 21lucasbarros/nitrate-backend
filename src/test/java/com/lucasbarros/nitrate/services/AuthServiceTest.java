@@ -20,6 +20,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -45,6 +46,7 @@ class AuthServiceTest {
         r.setUsername(username);
         r.setEmail(email);
         r.setPassword(senha);
+        r.setAcceptedTerms(true);
         return r;
     }
 
@@ -74,7 +76,7 @@ class AuthServiceTest {
     @Test
     void emailEhGuardadoEmMinusculasEComparadoSemDiferenciar() {
         when(userRepository.existsByEmailIgnoreCase("ana@x.com")).thenReturn(false);
-        when(userRepository.existsByUsername("ana")).thenReturn(false);
+        when(userRepository.existsByUsernameIgnoreCase("Ana")).thenReturn(false);
         when(passwordEncoder.encode("senha-boa-123")).thenReturn("hash");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -83,8 +85,19 @@ class AuthServiceTest {
         ArgumentCaptor<User> salvo = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(salvo.capture());
         assertEquals("ana@x.com", salvo.getValue().getEmail());
-        assertEquals("ana", salvo.getValue().getUsername());
+        assertEquals("Ana", salvo.getValue().getUsername()); // o @ guarda as maiúsculas
         assertEquals("Ana", salvo.getValue().getName());
+        assertNotNull(salvo.getValue().getTermsAcceptedAt());
+    }
+
+    @Test
+    void recusaCadastroSemAceitarOsTermos() {
+        RegisterRequestDTO r = cadastro("Ana", "ana", "ana@x.com", "senha-boa-123");
+        r.setAcceptedTerms(null);
+        assertEquals("Confirme que tem pelo menos 13 anos e aceite os Termos de Uso e a Política de Privacidade.", erro(r));
+        r.setAcceptedTerms(false);
+        assertEquals("Confirme que tem pelo menos 13 anos e aceite os Termos de Uso e a Política de Privacidade.", erro(r));
+        verify(userRepository, never()).save(any());
     }
 
     @Test

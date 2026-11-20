@@ -17,9 +17,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
         String limpo = identifier == null ? "" : identifier.trim();
-        // e-mail sem diferenciar maiúsculas; nome de usuário é sempre minúsculo
+        // e-mail e nome de usuário sem diferenciar maiúsculas
         User user = userRepository.findFirstByEmailIgnoreCase(limpo)
-                .or(() -> userRepository.findByUsername(limpo.toLowerCase()))
+                .or(() -> userRepository.findFirstByUsernameIgnoreCase(limpo))
                 .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado: " + identifier));
         return new CustomUserDetails(user);
     }

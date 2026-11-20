@@ -168,7 +168,7 @@ public class SocialService {
     public boolean segue(User eu, User alvo) { return followRepository.existsByFollowerAndFollowed(eu, alvo); }
 
     private User buscarPorUsername(String username) {
-        return userRepository.findByUsername(username.toLowerCase().trim())
+        return userRepository.findFirstByUsernameIgnoreCase(username.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + username));
     }
 }

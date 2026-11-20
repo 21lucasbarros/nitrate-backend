@@ -32,7 +32,7 @@ public class FavoritePeopleService {
 
     @Transactional(readOnly = true)
     public FavoritePeopleDTO favoritos(String username) {
-        User user = userRepository.findByUsername(username.toLowerCase().trim())
+        User user = userRepository.findFirstByUsernameIgnoreCase(username.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + username));
         List<FavoritePersonDTO> atores = new ArrayList<>();
         List<FavoritePersonDTO> diretores = new ArrayList<>();

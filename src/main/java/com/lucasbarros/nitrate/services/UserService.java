@@ -194,7 +194,7 @@ public class UserService {
     }
 
     private User buscarPorUsername(String username) {
-        return userRepository.findByUsername(username.toLowerCase().trim())
+        return userRepository.findFirstByUsernameIgnoreCase(username.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + username));
     }
 }
