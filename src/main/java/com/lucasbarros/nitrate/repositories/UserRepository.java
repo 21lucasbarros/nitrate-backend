@@ -3,9 +3,12 @@ package com.lucasbarros.nitrate.repositories;
 import com.lucasbarros.nitrate.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,4 +30,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "order by case when lower(u.username) like concat(:termo, '%') escape '\\' then 0 " +
             "when lower(u.name) like concat(:termo, '%') escape '\\' then 1 else 2 end, u.username")
     List<User> pesquisar(@Param("termo") String termo, Pageable pageable);
+
+    // painel de admin
+    long countByCreatedAtAfter(Instant desde);
+    long countByLastSeenAtAfter(Instant desde);
+    List<User> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    // update direto, sem carregar a entidade: roda em requisições logadas (ver JwtAuthenticationFilter)
+    @Modifying
+    @Transactional
+    @Query("update User u set u.lastSeenAt = :agora where u.id = :id")
+    void marcarVisto(@Param("id") Long id, @Param("agora") Instant agora);
 }

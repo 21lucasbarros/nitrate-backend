@@ -46,6 +46,8 @@ cors:
 
 admin:
   secret: ${CRON_SECRET}          # protege /admin/**; a Vercel envia nos Cron Jobs
+  emails: ${ADMIN_EMAILS:}        # contas que abrem o painel de admin no site, separadas por vírgula
+  usernames: ${ADMIN_USERNAMES:21lucasbarros}  # idem, pelo @
 
 # e-mails (redefinição de senha) pelo Resend. EMAIL_FROM precisa ser de um domínio verificado
 # no Resend, ex.: "Nitrate <nao-responda@seudominio.com>"

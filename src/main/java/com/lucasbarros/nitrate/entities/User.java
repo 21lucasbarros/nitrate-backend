@@ -49,6 +49,10 @@ public class User implements Serializable {
     // quando aceitou os Termos e a Política de Privacidade (com a idade mínima); nulo = conta anterior ao aceite
     private Instant termsAcceptedAt;
 
+    // última requisição logada, com precisão de alguns minutos (ver JwtAuthenticationFilter); usado
+    // só no painel de admin para contar quem está usando
+    private Instant lastSeenAt;
+
     public User() {
     }
 
@@ -94,6 +98,9 @@ public class User implements Serializable {
 
     public Instant getTermsAcceptedAt() { return termsAcceptedAt; }
     public void setTermsAcceptedAt(Instant termsAcceptedAt) { this.termsAcceptedAt = termsAcceptedAt; }
+
+    public Instant getLastSeenAt() { return lastSeenAt; }
+    public void setLastSeenAt(Instant lastSeenAt) { this.lastSeenAt = lastSeenAt; }
 
     /** caminho da foto na API, com a versão na URL para o cache; nulo sem foto */
     public String getAvatarPath() {

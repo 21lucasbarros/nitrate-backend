@@ -24,10 +24,14 @@ public class UserProfileDTO {
     private Boolean followedByMe;
     // se este perfil segue quem está vendo ("Segue você"); nulo para visitantes e no próprio perfil
     private Boolean followsMe;
+    // selos concedidos pelo admin, na ordem do catálogo
+    private List<BadgeDTO> badges;
+    // se a conta pode abrir o painel de admin; só vem no próprio perfil (/users/me), nulo nos outros
+    private Boolean admin;
 
     public UserProfileDTO(User user, long filmsCount, long reviewsCount, long likesCount, long watchlistCount,
                           long followersCount, long followingCount, List<MovieDTO> favorites, Boolean followedByMe,
-                          Boolean followsMe) {
+                          Boolean followsMe, List<BadgeDTO> badges, Boolean admin) {
         this.username = user.getUsername();
         this.name = user.getName();
         this.avatar = user.getAvatarPath();
@@ -44,6 +48,8 @@ public class UserProfileDTO {
         this.favorites = favorites;
         this.followedByMe = followedByMe;
         this.followsMe = followsMe;
+        this.badges = badges;
+        this.admin = admin;
     }
 
     public String getUsername() { return username; }
@@ -62,4 +68,6 @@ public class UserProfileDTO {
     public List<MovieDTO> getFavorites() { return favorites; }
     public Boolean getFollowedByMe() { return followedByMe; }
     public Boolean getFollowsMe() { return followsMe; }
+    public List<BadgeDTO> getBadges() { return badges; }
+    public Boolean getAdmin() { return admin; }
 }

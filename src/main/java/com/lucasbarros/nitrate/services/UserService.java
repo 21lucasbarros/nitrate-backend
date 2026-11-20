@@ -14,6 +14,7 @@ import com.lucasbarros.nitrate.repositories.MovieRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.repositories.WatchlistRepository;
+import com.lucasbarros.nitrate.security.AdminAccess;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,8 @@ public class UserService {
     @Autowired private WatchlistRepository watchlistRepository;
     @Autowired private MovieRepository movieRepository;
     @Autowired private SocialService socialService;
+    @Autowired private BadgeService badgeService;
+    @Autowired private AdminAccess adminAccess;
 
     /** `quemVe`: usuário logado (ou nulo), para dizer se ele segue este perfil e se é seguido por ele */
     @Transactional(readOnly = true)
@@ -46,15 +49,16 @@ public class UserService {
         boolean outraPessoa = quemVe != null && !quemVe.getId().equals(user.getId());
         Boolean segue = outraPessoa ? socialService.segue(quemVe, user) : null;
         Boolean meSegue = outraPessoa ? socialService.segue(user, quemVe) : null;
-        return perfil(user, segue, meSegue);
+        return perfil(user, segue, meSegue, null);
     }
 
+    /** o próprio perfil (/users/me): sem os campos de seguir, com o acesso ao painel de admin */
     @Transactional(readOnly = true)
     public UserProfileDTO perfil(User user) {
-        return perfil(user, null, null);
+        return perfil(user, null, null, adminAccess.isAdmin(user));
     }
 
-    private UserProfileDTO perfil(User user, Boolean seguidoPorQuemVe, Boolean segueQuemVe) {
+    private UserProfileDTO perfil(User user, Boolean seguidoPorQuemVe, Boolean segueQuemVe, Boolean admin) {
         return new UserProfileDTO(
                 user,
                 reviewRepository.countFilmesDistintos(user),
@@ -65,7 +69,9 @@ public class UserService {
                 socialService.contarSeguindo(user),
                 socialService.favoritos(user),
                 seguidoPorQuemVe,
-                segueQuemVe);
+                segueQuemVe,
+                badgeService.doUsuario(user),
+                admin);
     }
 
     private static final int TAMANHO_MAX_PAGINA = 60;

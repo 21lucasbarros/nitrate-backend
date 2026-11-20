@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -40,6 +41,9 @@ public class SecurityConfig {
 
     @Autowired
     private RateLimiter rateLimiter;
+
+    @Autowired
+    private AdminAccess adminAccess;
 
     // origens do front separadas por vírgula; aceita curingas para os previews da Vercel
     // (ex.: "https://nitrate.vercel.app,https://nitrate-*.vercel.app")
@@ -80,8 +84,10 @@ public class SecurityConfig {
                         // erros do próprio Spring (ex.: parâmetro faltando) são encaminhados para /error;
                         // bloqueado, todo 400 virava 401
                         .requestMatchers("/error").permitAll()
+                        // cron jobs com o segredo, ou o painel com o token de uma conta admin
                         .requestMatchers("/admin/**").access((autenticacao, contexto) ->
-                                new AuthorizationDecision(segredoAdminValido(contexto.getRequest())))
+                                new AuthorizationDecision(segredoAdminValido(contexto.getRequest())
+                                        || contaAdmin(autenticacao.get())))
                         .requestMatchers(HttpMethod.GET, "/movies/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/people/**").permitAll()
                         .requestMatchers("/users/me", "/users/me/**").authenticated()
@@ -100,6 +106,12 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private boolean contaAdmin(Authentication autenticacao) {
+        return autenticacao != null
+                && autenticacao.getPrincipal() instanceof CustomUserDetails detalhes
+                && adminAccess.isAdmin(detalhes.getUser());
     }
 
     private boolean segredoAdminValido(HttpServletRequest request) {

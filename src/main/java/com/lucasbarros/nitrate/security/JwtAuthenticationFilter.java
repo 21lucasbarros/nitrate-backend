@@ -1,5 +1,7 @@
 package com.lucasbarros.nitrate.security;
 
+import com.lucasbarros.nitrate.entities.User;
+import com.lucasbarros.nitrate.repositories.UserRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,6 +18,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -25,6 +31,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private CustomUserDetailsService userDetailsService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
+    private static final Duration INTERVALO_VISTO = Duration.ofMinutes(5);
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -64,9 +77,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                marcarVisto(((CustomUserDetails) userDetails).getUser());
             }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * "Visto por último" para o painel de admin. Grava no máximo uma vez a cada INTERVALO_VISTO,
+     * e não a cada requisição; uma falha aqui nunca derruba a requisição.
+     */
+    private void marcarVisto(User user) {
+        Instant agora = Instant.now();
+        Instant ultimo = user.getLastSeenAt();
+        if (ultimo != null && ultimo.isAfter(agora.minus(INTERVALO_VISTO))) return;
+        try {
+            userRepository.marcarVisto(user.getId(), agora);
+        } catch (RuntimeException e) {
+            log.warn("não foi possível gravar o último acesso de {}: {}", user.getId(), e.getMessage());
+        }
     }
 }

@@ -36,6 +36,10 @@ jwt:
 #   curl -H "Authorization: Bearer SEU_SEGREDO" -X POST localhost:8080/admin/expand-graph
 admin:
   secret: ${CRON_SECRET:troque-este-segredo-local}
+  # e-mails das contas que abrem o painel de admin no site (/admin), separados por vírgula
+  emails: ${ADMIN_EMAILS:}
+  # ou pelo @ (sem diferenciar maiúsculas)
+  usernames: ${ADMIN_USERNAMES:}
 
 # opcional: padrão é http://localhost:3000
 # cors:

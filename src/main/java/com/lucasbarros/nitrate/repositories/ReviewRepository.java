@@ -48,6 +48,15 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     long countByUserAndTextIsNotNull(User user);
     long countByUserAndLikedTrue(User user);
 
+    // painel de admin
+    long countByCreatedAtAfter(Instant desde);
+    long countByTextIsNotNull();
+    long countByUser(User user);
+    // quem mais registrou filmes desde `desde`. Linhas: [User, Long registros]
+    @Query("select r.user, count(r) from Review r where r.createdAt >= :desde " +
+            "group by r.user order by count(r) desc")
+    List<Object[]> findMaisAtivos(@Param("desde") Instant desde, Pageable pageable);
+
     // filmes que alguém curtiu ou avaliou bem e que ainda não tiveram o grafo expandido
     @Query("select distinct r.movie.id from Review r " +
             "where (r.liked = true or r.rating >= :notaMinima) and r.movie.grafoExpandido = false")
