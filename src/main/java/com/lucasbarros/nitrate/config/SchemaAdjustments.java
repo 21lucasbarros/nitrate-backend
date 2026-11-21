@@ -64,16 +64,16 @@ public class SchemaAdjustments implements ApplicationRunner {
             log.info("tb_notification.movie_id agora aceita nulo (notificações de seguidor)");
         }
 
-        // o Hibernate criou um check com os valores do enum (CINEMA, STREAMING) e não o atualiza;
-        // sem removê-lo, o tipo FOLLOW seria recusado pelo banco
+        // o Hibernate cria um check com os valores do enum na criação da tabela e não o atualiza;
+        // sem removê-lo, tipos novos (FOLLOW, SERIES_PREMIERE, SERIES_SEASON) seriam recusados pelo banco
         List<String> checks = jdbc.queryForList(
                 "select conname from pg_constraint where conrelid = 'tb_notification'::regclass " +
                 "and contype = 'c' and pg_get_constraintdef(oid) like '%STREAMING%' " +
-                "and pg_get_constraintdef(oid) not like '%FOLLOW%'",
+                "and pg_get_constraintdef(oid) not like '%SERIES_SEASON%'",
                 String.class);
         for (String nome : checks) {
             jdbc.execute("alter table tb_notification drop constraint \"" + nome.replace("\"", "\"\"") + "\"");
-            log.info("check {} removido de tb_notification (novo tipo FOLLOW)", nome);
+            log.info("check {} removido de tb_notification (tipos novos de notificação)", nome);
         }
     }
 }

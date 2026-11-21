@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.BatchSize;
 
 import java.io.Serializable;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +31,19 @@ public class Series implements Serializable {
     private String name;
 
     private Integer firstAirYear;
+
+    // data do primeiro episódio; nula enquanto o TMDB não tem estreia marcada
+    private LocalDate firstAirDate;
+
+    // Radar de Estreias (ver SeriesRadarService): se a última verificação viu a série já no ar.
+    // Nulo = nunca verificada
+    private Boolean radarEstreou;
+
+    // maior temporada (fora os especiais) já no ar na última verificação; nulo = nunca verificada
+    private Integer radarUltimaTemporada;
+
+    // quando o radar olhou a série pela última vez: as menos recentes vão primeiro
+    private Instant radarVerificadoEm;
 
     // nulo enquanto a série ainda está no ar
     private Integer lastAirYear;
@@ -74,6 +89,18 @@ public class Series implements Serializable {
 
     public Integer getFirstAirYear() { return firstAirYear; }
     public void setFirstAirYear(Integer firstAirYear) { this.firstAirYear = firstAirYear; }
+
+    public LocalDate getFirstAirDate() { return firstAirDate; }
+    public void setFirstAirDate(LocalDate firstAirDate) { this.firstAirDate = firstAirDate; }
+
+    public Boolean getRadarEstreou() { return radarEstreou; }
+    public void setRadarEstreou(Boolean radarEstreou) { this.radarEstreou = radarEstreou; }
+
+    public Integer getRadarUltimaTemporada() { return radarUltimaTemporada; }
+    public void setRadarUltimaTemporada(Integer radarUltimaTemporada) { this.radarUltimaTemporada = radarUltimaTemporada; }
+
+    public Instant getRadarVerificadoEm() { return radarVerificadoEm; }
+    public void setRadarVerificadoEm(Instant radarVerificadoEm) { this.radarVerificadoEm = radarVerificadoEm; }
 
     public Integer getLastAirYear() { return lastAirYear; }
     public void setLastAirYear(Integer lastAirYear) { this.lastAirYear = lastAirYear; }

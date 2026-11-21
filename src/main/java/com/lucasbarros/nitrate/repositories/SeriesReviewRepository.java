@@ -17,6 +17,10 @@ public interface SeriesReviewRepository extends JpaRepository<SeriesReview, Long
     List<SeriesReview> findByUserAndSeriesOrderByWatchedOnDescCreatedAtDesc(User user, Series series);
     List<SeriesReview> findByUserAndWatchedOnBetweenOrderByWatchedOnAsc(User user, LocalDate inicio, LocalDate fim);
 
+    // Radar de Estreias: quem já registrou a série (ou uma temporada dela) e vai querer saber da próxima
+    @Query("select distinct r.user from SeriesReview r where r.series = :series")
+    List<User> findUsuariosQueRegistraram(@Param("series") Series series);
+
     @Query("select r.watchedOn from SeriesReview r where r.user = :user and r.watchedOn is not null")
     List<LocalDate> findDatasAssistidas(@Param("user") User user);
 

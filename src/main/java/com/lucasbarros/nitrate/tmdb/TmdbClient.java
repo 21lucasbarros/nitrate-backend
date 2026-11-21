@@ -241,6 +241,18 @@ public class TmdbClient {
                 .body(TmdbTvDetailDTO.class);
     }
 
+    /** só os dados da série, sem o elenco (Radar de Estreias) */
+    public TmdbTvDetailDTO buscarSerieSemElenco(Long tmdbId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/tv/{id}")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .build(tmdbId))
+                .retrieve()
+                .body(TmdbTvDetailDTO.class);
+    }
+
     public TmdbTvSeasonDTO buscarTemporada(Long tmdbId, int temporada) {
         return restClient().get()
                 .uri(uriBuilder -> uriBuilder

@@ -2,6 +2,7 @@ package com.lucasbarros.nitrate.repositories;
 
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.Notification;
+import com.lucasbarros.nitrate.entities.Series;
 import com.lucasbarros.nitrate.entities.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByUserOrderByCreatedAtDescIdDesc(User user, Pageable pageable);
     long countByUserAndReadAtIsNull(User user);
     boolean existsByUserAndMovieAndType(User user, Movie movie, Notification.Type type);
+    boolean existsByUserAndSeriesAndType(User user, Series series, Notification.Type type);
+    boolean existsByUserAndSeriesAndTypeAndSeasonNumber(User user, Series series, Notification.Type type, Integer seasonNumber);
 
     @Modifying
     @Query("update Notification n set n.readAt = :agora where n.user = :user and n.readAt is null")

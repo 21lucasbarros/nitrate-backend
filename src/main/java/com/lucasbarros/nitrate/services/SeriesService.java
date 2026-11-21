@@ -12,6 +12,7 @@ import com.lucasbarros.nitrate.repositories.SeriesRepository;
 import com.lucasbarros.nitrate.repositories.SeriesReviewRepository;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import com.lucasbarros.nitrate.tmdb.TmdbClient;
+import com.lucasbarros.nitrate.tmdb.TmdbImportService;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbGenreDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbTvDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbTvSeasonDTO;
@@ -154,6 +155,7 @@ public class SeriesService {
     private static void preencher(Series serie, TmdbTvDetailDTO d) {
         serie.setName(d.getName() == null || d.getName().isBlank() ? "Série " + d.getId() : d.getName());
         serie.setFirstAirYear(SeriesSearchResultDTO.ano(d.getFirstAirDate()));
+        serie.setFirstAirDate(TmdbImportService.extrairData(d.getFirstAirDate()));
         serie.setLastAirYear(emExibicao(d) ? null : SeriesSearchResultDTO.ano(d.getLastAirDate()));
         serie.setStatus(d.getStatus());
         serie.setNumberOfSeasons(d.getNumberOfSeasons());
@@ -168,7 +170,8 @@ public class SeriesService {
         serie.setGenres(new ArrayList<>(d.getGenres().stream().map(TmdbGenreDTO::getName).filter(Objects::nonNull).toList()));
     }
 
-    private static boolean emExibicao(TmdbTvDetailDTO d) {
+    /** a série segue no ar (ou volta com temporada nova) */
+    static boolean emExibicao(TmdbTvDetailDTO d) {
         return d.isInProduction() || "Returning Series".equals(d.getStatus());
     }
 

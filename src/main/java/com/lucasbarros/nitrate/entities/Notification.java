@@ -7,18 +7,19 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * Aviso para a pessoa: um filme da watchlist chegou aos cinemas ou ao streaming (Radar de
- * Estreias), ou alguém começou a seguir ela.
+ * Aviso para a pessoa: um filme da watchlist chegou aos cinemas ou ao streaming, uma série
+ * estreou ou ganhou temporada nova (Radar de Estreias), ou alguém começou a seguir ela.
  */
 @Entity
 @Table(name = "tb_notification",
-        // cada pessoa é avisada uma vez só de cada estreia de cada filme
+        // cada pessoa é avisada uma vez só de cada estreia de cada filme (nas séries quem
+        // garante é o SeriesRadarService, já que movie_id fica nulo)
         uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "movie_id", "type"}),
         indexes = @Index(columnList = "user_id, createdAt"))
 public class Notification implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public enum Type { CINEMA, STREAMING, FOLLOW }
+    public enum Type { CINEMA, STREAMING, FOLLOW, SERIES_PREMIERE, SERIES_SEASON }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,10 +29,18 @@ public class Notification implements Serializable {
     @JoinColumn(name = "user_id")
     private User user;
 
-    // nas estreias; nulo em FOLLOW
+    // nas estreias de filmes; nulo nos outros tipos
     @ManyToOne
     @JoinColumn(name = "movie_id")
     private Movie movie;
+
+    // em SERIES_PREMIERE e SERIES_SEASON; nulo nos outros tipos
+    @ManyToOne
+    @JoinColumn(name = "series_id")
+    private Series series;
+
+    // em SERIES_SEASON, a temporada que estreou
+    private Integer seasonNumber;
 
     // quem fez a ação (em FOLLOW, quem começou a seguir); nulo nas estreias
     @ManyToOne
@@ -61,6 +70,22 @@ public class Notification implements Serializable {
         this.detail = detail;
     }
 
+    public static Notification estreiaDeSerie(User user, Series series, String detail) {
+        Notification n = new Notification();
+        n.user = user;
+        n.series = series;
+        n.type = Type.SERIES_PREMIERE;
+        n.detail = detail;
+        return n;
+    }
+
+    public static Notification novaTemporada(User user, Series series, int seasonNumber, String detail) {
+        Notification n = estreiaDeSerie(user, series, detail);
+        n.type = Type.SERIES_SEASON;
+        n.seasonNumber = seasonNumber;
+        return n;
+    }
+
     public static Notification follow(User seguido, User seguidor) {
         Notification n = new Notification();
         n.user = seguido;
@@ -72,6 +97,8 @@ public class Notification implements Serializable {
     public Long getId() { return id; }
     public User getUser() { return user; }
     public Movie getMovie() { return movie; }
+    public Series getSeries() { return series; }
+    public Integer getSeasonNumber() { return seasonNumber; }
     public User getActor() { return actor; }
     public Type getType() { return type; }
     public String getDetail() { return detail; }

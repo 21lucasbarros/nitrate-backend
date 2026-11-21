@@ -15,6 +15,7 @@ public interface SeriesWatchlistRepository extends JpaRepository<SeriesWatchlist
     List<SeriesWatchlistItem> findByUserOrderByAddedAtDesc(User user);
     Optional<SeriesWatchlistItem> findByUserAndSeries(User user, Series series);
     boolean existsByUserAndSeries(User user, Series series);
+    List<SeriesWatchlistItem> findBySeries(Series series);
 
     @Modifying
     @Query("delete from SeriesWatchlistItem w where w.user = :user")
