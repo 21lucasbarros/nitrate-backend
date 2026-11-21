@@ -33,6 +33,8 @@ public class TmdbMovieDetailDTO {
 
     private TmdbCreditsDTO credits;
 
+    private TmdbMovieImagesDTO images; // só com append_to_response=images
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getTitle() { return title; }
@@ -55,4 +57,6 @@ public class TmdbMovieDetailDTO {
     public void setBelongsToCollection(TmdbCollectionDTO belongsToCollection) { this.belongsToCollection = belongsToCollection; }
     public TmdbCreditsDTO getCredits() { return credits; }
     public void setCredits(TmdbCreditsDTO credits) { this.credits = credits; }
+    public TmdbMovieImagesDTO getImages() { return images; }
+    public void setImages(TmdbMovieImagesDTO images) { this.images = images; }
 }

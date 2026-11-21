@@ -28,10 +28,16 @@ public class UserProfileDTO {
     private List<BadgeDTO> badges;
     // se a conta pode abrir o painel de admin; só vem no próprio perfil (/users/me), nulo nos outros
     private Boolean admin;
+    // e-mail da conta: só no próprio perfil (/users/me), para a tela de configurações; nulo nos outros
+    private String email;
+    // fundo escolhido para o topo do perfil; nulo = o front usa a cena do primeiro favorito
+    private Cover cover;
+
+    public record Cover(String path, Long tmdbId, String title, Integer year) {}
 
     public UserProfileDTO(User user, long filmsCount, long reviewsCount, long likesCount, long watchlistCount,
                           long followersCount, long followingCount, List<MovieDTO> favorites, Boolean followedByMe,
-                          Boolean followsMe, List<BadgeDTO> badges, Boolean admin) {
+                          Boolean followsMe, List<BadgeDTO> badges, Boolean admin, String email) {
         this.username = user.getUsername();
         this.name = user.getName();
         this.avatar = user.getAvatarPath();
@@ -50,6 +56,9 @@ public class UserProfileDTO {
         this.followsMe = followsMe;
         this.badges = badges;
         this.admin = admin;
+        this.email = email;
+        this.cover = user.getCoverPath() == null ? null
+                : new Cover(user.getCoverPath(), user.getCoverTmdbId(), user.getCoverTitle(), user.getCoverYear());
     }
 
     public String getUsername() { return username; }
@@ -70,4 +79,6 @@ public class UserProfileDTO {
     public Boolean getFollowsMe() { return followsMe; }
     public List<BadgeDTO> getBadges() { return badges; }
     public Boolean getAdmin() { return admin; }
+    public String getEmail() { return email; }
+    public Cover getCover() { return cover; }
 }

@@ -49,16 +49,16 @@ public class UserService {
         boolean outraPessoa = quemVe != null && !quemVe.getId().equals(user.getId());
         Boolean segue = outraPessoa ? socialService.segue(quemVe, user) : null;
         Boolean meSegue = outraPessoa ? socialService.segue(user, quemVe) : null;
-        return perfil(user, segue, meSegue, null);
+        return perfil(user, segue, meSegue, null, false);
     }
 
-    /** o próprio perfil (/users/me): sem os campos de seguir, com o acesso ao painel de admin */
+    /** o próprio perfil (/users/me): sem os campos de seguir, com o acesso ao painel de admin e o e-mail */
     @Transactional(readOnly = true)
     public UserProfileDTO perfil(User user) {
-        return perfil(user, null, null, adminAccess.isAdmin(user));
+        return perfil(user, null, null, adminAccess.isAdmin(user), true);
     }
 
-    private UserProfileDTO perfil(User user, Boolean seguidoPorQuemVe, Boolean segueQuemVe, Boolean admin) {
+    private UserProfileDTO perfil(User user, Boolean seguidoPorQuemVe, Boolean segueQuemVe, Boolean admin, boolean proprio) {
         return new UserProfileDTO(
                 user,
                 reviewRepository.countFilmesDistintos(user),
@@ -71,7 +71,8 @@ public class UserService {
                 seguidoPorQuemVe,
                 segueQuemVe,
                 badgeService.doUsuario(user),
-                admin);
+                admin,
+                proprio ? user.getEmail() : null);
     }
 
     private static final int TAMANHO_MAX_PAGINA = 60;

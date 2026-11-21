@@ -60,9 +60,7 @@ public class AuthService {
 
         validarUsername(username);
 
-        if (email.length() > EMAIL_MAX || !EMAIL_PATTERN.matcher(email).matches()) {
-            throw new IllegalArgumentException("Informe um e-mail válido.");
-        }
+        validarEmail(email);
 
         validarSenha(senha);
 
@@ -121,6 +119,13 @@ public class AuthService {
 
     static boolean usernameReservado(String username) {
         return USERNAMES_RESERVADOS.contains(username.toLowerCase(Locale.ROOT));
+    }
+
+    /** formato do e-mail (já em minúsculas), também usado ao trocar o e-mail (AccountService) */
+    static void validarEmail(String email) {
+        if (email == null || email.length() > EMAIL_MAX || !EMAIL_PATTERN.matcher(email).matches()) {
+            throw new IllegalArgumentException("Informe um e-mail válido.");
+        }
     }
 
     /** regras de senha do cadastro, também usadas na redefinição e na troca de senha */

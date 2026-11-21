@@ -1,5 +1,6 @@
 package com.lucasbarros.nitrate.resources;
 
+import com.lucasbarros.nitrate.dto.MovieBackdropsDTO;
 import com.lucasbarros.nitrate.dto.MovieCreditsDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.MovieSearchResultDTO;
@@ -8,6 +9,7 @@ import com.lucasbarros.nitrate.dto.PageDTO;
 import com.lucasbarros.nitrate.dto.WatchProvidersDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
 import com.lucasbarros.nitrate.services.MovieService;
+import com.lucasbarros.nitrate.services.ProfileCoverService;
 import com.lucasbarros.nitrate.services.ReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +30,9 @@ public class MovieResource {
 
     @Autowired
     private ReviewService reviewService;
+
+    @Autowired
+    private ProfileCoverService profileCoverService;
 
     @GetMapping(value = "/catalog")
     public PageDTO<MovieDTO> catalogo(@RequestParam(defaultValue = "0") int page,
@@ -66,6 +71,12 @@ public class MovieResource {
     public MovieDTO obterPorTmdbId(@PathVariable Long tmdbId) {
         Long id = movieService.obterOuImportarId(tmdbId);
         return movieService.buscarPorId(id);
+    }
+
+    /** cenas de qualquer filme do TMDB (importado ou não), para escolher o fundo do perfil */
+    @GetMapping(value = "/tmdb/{tmdbId}/backdrops")
+    public MovieBackdropsDTO cenas(@PathVariable Long tmdbId) {
+        return profileCoverService.cenas(tmdbId);
     }
 
     @GetMapping(value = "/slug/{slug}")

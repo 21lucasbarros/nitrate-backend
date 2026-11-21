@@ -3,6 +3,7 @@ package com.lucasbarros.nitrate.resources;
 import com.lucasbarros.nitrate.dto.AccountDeletionDTO;
 import com.lucasbarros.nitrate.dto.AccountExportDTO;
 import com.lucasbarros.nitrate.dto.AuthResponseDTO;
+import com.lucasbarros.nitrate.dto.EmailChangeDTO;
 import com.lucasbarros.nitrate.dto.FavoritePeopleDTO;
 import com.lucasbarros.nitrate.dto.FavoritePeopleRequestDTO;
 import com.lucasbarros.nitrate.dto.FilmDTO;
@@ -16,6 +17,7 @@ import com.lucasbarros.nitrate.dto.MovieUserStateDTO;
 import com.lucasbarros.nitrate.dto.NotificationDTO;
 import com.lucasbarros.nitrate.dto.PageDTO;
 import com.lucasbarros.nitrate.dto.PasswordChangeDTO;
+import com.lucasbarros.nitrate.dto.ProfileCoverRequestDTO;
 import com.lucasbarros.nitrate.dto.ProfileUpdateDTO;
 import com.lucasbarros.nitrate.dto.RecommendationResultDTO;
 import com.lucasbarros.nitrate.dto.RetrospectiveDTO;
@@ -32,6 +34,7 @@ import com.lucasbarros.nitrate.services.FriendsService;
 import com.lucasbarros.nitrate.services.ListSocialService;
 import com.lucasbarros.nitrate.services.MovieListService;
 import com.lucasbarros.nitrate.services.NotificationService;
+import com.lucasbarros.nitrate.services.ProfileCoverService;
 import com.lucasbarros.nitrate.services.RecommendationService;
 import com.lucasbarros.nitrate.services.RetrospectiveService;
 import com.lucasbarros.nitrate.services.SocialService;
@@ -87,6 +90,9 @@ public class UserResource {
     @Autowired
     private AvatarService avatarService;
 
+    @Autowired
+    private ProfileCoverService profileCoverService;
+
     @GetMapping("/me")
     public UserProfileDTO me(@AuthenticationPrincipal CustomUserDetails principal) {
         return userService.perfil(principal.getUser());
@@ -103,6 +109,25 @@ public class UserResource {
     public AuthResponseDTO trocarSenha(@AuthenticationPrincipal CustomUserDetails principal,
                                        @RequestBody PasswordChangeDTO request) {
         return accountService.trocarSenha(principal.getUser(), request);
+    }
+
+    /** devolve um token novo: o token guarda o e-mail, então os anteriores deixam de valer */
+    @PutMapping("/me/email")
+    public AuthResponseDTO trocarEmail(@AuthenticationPrincipal CustomUserDetails principal,
+                                       @RequestBody EmailChangeDTO request) {
+        return accountService.trocarEmail(principal.getUser(), request);
+    }
+
+    // fundo do topo do perfil: uma cena de filme (as opções vêm de /movies/tmdb/{tmdbId}/backdrops)
+    @PutMapping("/me/cover")
+    public UserProfileDTO trocarFundo(@AuthenticationPrincipal CustomUserDetails principal,
+                                      @RequestBody ProfileCoverRequestDTO request) {
+        return profileCoverService.salvar(principal.getUser(), request);
+    }
+
+    @DeleteMapping("/me/cover")
+    public UserProfileDTO removerFundo(@AuthenticationPrincipal CustomUserDetails principal) {
+        return profileCoverService.remover(principal.getUser());
     }
 
     // foto de perfil: multipart com o campo "file" (JPG ou PNG); o servidor recorta e reduz

@@ -53,6 +53,15 @@ public class User implements Serializable {
     // só no painel de admin para contar quem está usando
     private Instant lastSeenAt;
 
+    // fundo do topo do perfil: uma cena de filme escolhida no TMDB (caminho da imagem, filme, título
+    // e ano, guardados para não buscar no TMDB a cada visita); nulo = a cena do primeiro favorito
+    @Column(length = 100)
+    private String coverPath;
+    private Long coverTmdbId;
+    @Column(length = 300)
+    private String coverTitle;
+    private Integer coverYear;
+
     public User() {
     }
 
@@ -101,6 +110,18 @@ public class User implements Serializable {
 
     public Instant getLastSeenAt() { return lastSeenAt; }
     public void setLastSeenAt(Instant lastSeenAt) { this.lastSeenAt = lastSeenAt; }
+
+    public String getCoverPath() { return coverPath; }
+    public void setCoverPath(String coverPath) { this.coverPath = coverPath; }
+
+    public Long getCoverTmdbId() { return coverTmdbId; }
+    public void setCoverTmdbId(Long coverTmdbId) { this.coverTmdbId = coverTmdbId; }
+
+    public String getCoverTitle() { return coverTitle; }
+    public void setCoverTitle(String coverTitle) { this.coverTitle = coverTitle; }
+
+    public Integer getCoverYear() { return coverYear; }
+    public void setCoverYear(Integer coverYear) { this.coverYear = coverYear; }
 
     /** caminho da foto na API, com a versão na URL para o cache; nulo sem foto */
     public String getAvatarPath() {

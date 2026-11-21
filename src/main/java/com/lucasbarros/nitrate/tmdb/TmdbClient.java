@@ -79,6 +79,23 @@ public class TmdbClient {
                 .body(TmdbMovieDetailDTO.class);
     }
 
+    /**
+     * detalhes com as cenas do filme (backdrops) para escolher o fundo do perfil. O idioma das
+     * imagens fica sem filtro de pt-BR: as cenas sem texto (null) são a maioria e as melhores.
+     */
+    public TmdbMovieDetailDTO buscarDetalhesComImagens(Long tmdbId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/movie/{id}")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .queryParam("append_to_response", "images")
+                        .queryParam("include_image_language", "null,pt,en")
+                        .build(tmdbId))
+                .retrieve()
+                .body(TmdbMovieDetailDTO.class);
+    }
+
     public TmdbPopularResponseDTO pesquisarFilmes(String termo) {
         return pesquisarFilmes(termo, null);
     }

@@ -2,6 +2,7 @@ package com.lucasbarros.nitrate.services;
 
 import com.lucasbarros.nitrate.dto.AccountExportDTO;
 import com.lucasbarros.nitrate.dto.AuthResponseDTO;
+import com.lucasbarros.nitrate.dto.EmailChangeDTO;
 import com.lucasbarros.nitrate.dto.PasswordChangeDTO;
 import com.lucasbarros.nitrate.dto.ProfileUpdateDTO;
 import com.lucasbarros.nitrate.dto.UserProfileDTO;
@@ -31,6 +32,7 @@ import com.lucasbarros.nitrate.repositories.WatchlistRepository;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
 import com.lucasbarros.nitrate.security.JwtService;
 import com.lucasbarros.nitrate.security.RateLimiter;
+import com.lucasbarros.nitrate.services.exceptions.EmailJaCadastradoException;
 import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
 import com.lucasbarros.nitrate.services.exceptions.TooManyRequestsException;
 import com.lucasbarros.nitrate.services.exceptions.UsernameJaCadastradoException;
@@ -43,6 +45,7 @@ import org.springframework.web.util.HtmlUtils;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 /** A conta da própria pessoa: editar o perfil, exportar os dados e excluir a conta (LGPD). */
@@ -54,6 +57,9 @@ public class AccountService {
     // a senha atual é conferida a cada tentativa: limita quem tenta adivinhá-la com uma sessão aberta
     private static final int TROCAS_SENHA_MAX = 10;
     private static final Duration JANELA_TROCAS_SENHA = Duration.ofMinutes(15);
+    // a troca de e-mail também confere a senha: mesmo limite
+    private static final int TROCAS_EMAIL_MAX = 10;
+    private static final Duration JANELA_TROCAS_EMAIL = Duration.ofMinutes(15);
     // regras dos próprios sites para nomes de usuário
     private static final Pattern TWITTER = Pattern.compile("^[A-Za-z0-9_]{1,15}$");
     private static final Pattern INSTAGRAM = Pattern.compile("^[A-Za-z0-9._]{1,30}$");
@@ -158,6 +164,58 @@ public class AccountService {
 
         String token = jwtService.gerarToken(new CustomUserDetails(salvo));
         return new AuthResponseDTO(token, salvo.getName(), salvo.getUsername(), salvo.getEmail());
+    }
+
+    /**
+     * Troca o e-mail sabendo a senha. O token guarda o e-mail, então as sessões abertas nos outros
+     * aparelhos caem sozinhas; devolve um token novo para este continuar conectado. O e-mail antigo
+     * recebe um aviso, a chance de recuperar a conta se não foi a própria pessoa.
+     */
+    @Transactional
+    public AuthResponseDTO trocarEmail(User user, EmailChangeDTO dados) {
+        if (!rateLimiter.tentar("troca-email:" + user.getId(), TROCAS_EMAIL_MAX, JANELA_TROCAS_EMAIL)) {
+            throw new TooManyRequestsException("Muitas tentativas de trocar o e-mail. Espere alguns minutos e tente de novo.");
+        }
+        User salvo = userRepository.findById(user.getId()).orElseThrow();
+        if (dados.password() == null || !passwordEncoder.matches(dados.password(), salvo.getPasswordHash())) {
+            throw new ForbiddenException("Senha incorreta.");
+        }
+        String email = dados.email() == null ? "" : dados.email().trim().toLowerCase(Locale.ROOT);
+        AuthService.validarEmail(email);
+        if (email.equalsIgnoreCase(salvo.getEmail())) {
+            throw new IllegalArgumentException("Esse já é o e-mail da sua conta.");
+        }
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new EmailJaCadastradoException(email);
+        }
+
+        String antigo = salvo.getEmail();
+        salvo.setEmail(email);
+        userRepository.save(salvo);
+        passwordResetTokenRepository.deleteAllByUser(salvo); // um link de redefinição enviado ao e-mail antigo não vale mais
+
+        emailService.enviarEmSegundoPlano(antigo, "O e-mail da sua conta no Nitrate foi alterado",
+                avisoEmailAlteradoHtml(salvo.getName(), email), avisoEmailAlteradoTexto(salvo.getName(), email));
+
+        String token = jwtService.gerarToken(new CustomUserDetails(salvo));
+        return new AuthResponseDTO(token, salvo.getName(), salvo.getUsername(), salvo.getEmail());
+    }
+
+    private static String avisoEmailAlteradoTexto(String nome, String novo) {
+        return "Olá, " + nome + "!\n\n"
+                + "O e-mail da sua conta no Nitrate acabou de ser trocado para " + novo + ", e as sessões abertas em outros aparelhos foram encerradas.\n\n"
+                + "Se não foi você, fale com a gente o quanto antes para recuperarmos a sua conta.";
+    }
+
+    private static String avisoEmailAlteradoHtml(String nome, String novo) {
+        return """
+                <div style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #1a1b1e;">
+                  <p style="font-size: 20px; font-weight: 700; letter-spacing: -0.5px; text-transform: uppercase; margin: 0 0 24px;">Nitrate<span style="color: #FF7A33;">.</span></p>
+                  <p style="font-size: 16px; line-height: 1.6;">Olá, %s!</p>
+                  <p style="font-size: 16px; line-height: 1.6;">O e-mail da sua conta acabou de ser trocado para <strong>%s</strong>, e as sessões abertas em outros aparelhos foram encerradas.</p>
+                  <p style="font-size: 14px; line-height: 1.6; color: #6b6f76;">Se não foi você, fale com a gente o quanto antes para recuperarmos a sua conta.</p>
+                </div>
+                """.formatted(HtmlUtils.htmlEscape(nome), HtmlUtils.htmlEscape(novo));
     }
 
     // se não foi a própria pessoa, o aviso é a chance de ela perceber e recuperar a conta
