@@ -84,6 +84,8 @@ public class ReviewService {
         }
 
         Review review = new Review(user, filme);
+        // nota de antes da estreia (sessão de festival no Letterboxd, por exemplo) entra sem a nota
+        if (!filme.jaEstreou()) request.setRating(null);
         aplicar(review, request);
         if (registradoEm != null) {
             Instant data = registradoEm.atStartOfDay(ZoneOffset.UTC).toInstant();
@@ -161,6 +163,10 @@ public class ReviewService {
         Double nota = request.getRating();
         if (nota != null && (nota < 0.5 || nota > 5 || nota * 2 != Math.floor(nota * 2))) {
             throw new IllegalArgumentException("A nota deve ir de 0.5 a 5, em passos de 0.5");
+        }
+        // antes da estreia dá para registrar, escrever e curtir, mas não dar nota
+        if (nota != null && !review.getMovie().jaEstreou()) {
+            throw new IllegalArgumentException("Este filme ainda não estreou: a nota fica liberada a partir da estreia");
         }
 
         String texto = request.getText() == null ? null : request.getText().trim();

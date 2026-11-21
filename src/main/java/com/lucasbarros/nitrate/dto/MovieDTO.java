@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.entities.Genre;
 import com.lucasbarros.nitrate.entities.Movie;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +21,8 @@ public class MovieDTO implements Serializable {
     private String slug;
     private String posterPath;
     private String overview;
+    private LocalDate releaseDate;
+    private boolean released; // antes da estreia dá para registrar e curtir, mas não dar nota
 
     public MovieDTO() {
     }
@@ -32,6 +35,8 @@ public class MovieDTO implements Serializable {
         slug = entity.getSlug();
         posterPath = entity.getPosterPath();
         overview = entity.getOverview();
+        releaseDate = entity.getReleaseDate();
+        released = entity.jaEstreou();
 
         if(entity.getDirector() != null) {
             director = entity.getDirector().getName();
@@ -118,5 +123,13 @@ public class MovieDTO implements Serializable {
 
     public String getSlug() {
         return slug;
+    }
+
+    public LocalDate getReleaseDate() {
+        return releaseDate;
+    }
+
+    public boolean isReleased() {
+        return released;
     }
 }

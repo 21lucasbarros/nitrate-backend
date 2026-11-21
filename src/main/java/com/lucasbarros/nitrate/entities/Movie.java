@@ -192,6 +192,12 @@ public class Movie implements Serializable {
         this.releaseDate = releaseDate;
     }
 
+    // sem a data, só o ano: um ano futuro é não lançado; o ano corrente fica no benefício da dúvida
+    public boolean jaEstreou() {
+        if (releaseDate != null) return !releaseDate.isAfter(LocalDate.now());
+        return releaseYear == null || releaseYear <= LocalDate.now().getYear();
+    }
+
     public Boolean getRadarNosCinemas() {
         return radarNosCinemas;
     }
