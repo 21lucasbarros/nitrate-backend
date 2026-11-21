@@ -27,7 +27,7 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
- * Radar de Estreias: uma vez por dia (Cron Job da Vercel em /admin/release-radar), confere os
+ * Radar de Estreias: uma vez por dia (tarefa agendada em /admin/release-radar), confere os
  * filmes que estão em alguma watchlist e ainda não estrearam em todo lugar. Quando um deles
  * chega aos cinemas do Brasil ou a um streaming por assinatura daqui, avisa quem tem o filme
  * na watchlist.

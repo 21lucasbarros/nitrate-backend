@@ -45,13 +45,13 @@ public class SecurityConfig {
     @Autowired
     private AdminAccess adminAccess;
 
-    // origens do front separadas por vírgula; aceita curingas para os previews da Vercel
-    // (ex.: "https://nitrate.vercel.app,https://nitrate-*.vercel.app")
+    // origens do front separadas por vírgula; aceita curingas
+    // (ex.: "https://nitrate.com.br,https://*.nitrate.com.br")
     @Value("${cors.allowed-origins:http://localhost:3000}")
     private List<String> allowedOrigins;
 
-    // segredo do /admin/**. Mesmo valor do CRON_SECRET da Vercel, que é enviado pelos
-    // Cron Jobs como "Authorization: Bearer <segredo>". Vazio = /admin bloqueado.
+    // segredo do /admin/**. Mesmo valor do CRON_SECRET, que é enviado pelas
+    // tarefas agendadas como "Authorization: Bearer <segredo>". Vazio = /admin bloqueado.
     @Value("${admin.secret:}")
     private String adminSecret;
 

@@ -31,7 +31,7 @@ spring:
         default_batch_fetch_size: 50
 
 server:
-  port: ${PORT:8080}              # Render/Railway/Fly informam a porta por PORT
+  port: ${PORT:8080}              # padrão 8080; dá para trocar por PORT
 
 tmdb:
   api-key: ${TMDB_API_KEY}

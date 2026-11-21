@@ -13,13 +13,13 @@ import java.time.Duration;
 @RequestMapping("/admin/expand-graph")
 public class GraphAdminResource {
 
-    // fica bem abaixo do limite de duração de uma função na Vercel
+    // limita cada chamada; o que faltar continua na próxima
     private static final Duration ORCAMENTO = Duration.ofSeconds(90);
 
     @Autowired
     private GraphExpansionService graphExpansionService;
 
-    // GET porque os Cron Jobs da Vercel chamam com GET; POST para chamadas manuais
+    // GET para as tarefas agendadas; POST para chamadas manuais
     @RequestMapping(method = {RequestMethod.GET, RequestMethod.POST})
     public ResultadoExpansao expandir() {
         return graphExpansionService.expandirPendentes(ORCAMENTO);

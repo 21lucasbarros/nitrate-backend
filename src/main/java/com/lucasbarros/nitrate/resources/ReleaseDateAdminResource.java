@@ -19,7 +19,7 @@ import java.time.Duration;
 @RequestMapping("/admin/release-dates")
 public class ReleaseDateAdminResource implements ApplicationRunner {
 
-    // fica bem abaixo do limite de duração de uma função na Vercel
+    // limita cada chamada; o que faltar continua na próxima
     private static final Duration ORCAMENTO = Duration.ofSeconds(90);
     // na inicialização não há quem espere a resposta: dá para ir mais longe
     private static final Duration ORCAMENTO_INICIALIZACAO = Duration.ofMinutes(15);
@@ -32,7 +32,7 @@ public class ReleaseDateAdminResource implements ApplicationRunner {
         releaseDateBackfillService.preencherEmSegundoPlano(ORCAMENTO_INICIALIZACAO);
     }
 
-    // GET porque os Cron Jobs da Vercel chamam com GET; POST para chamadas manuais
+    // GET para as tarefas agendadas; POST para chamadas manuais
     @RequestMapping(method = {RequestMethod.GET, RequestMethod.POST})
     public ResultadoDatas preencher() {
         return releaseDateBackfillService.preencher(ORCAMENTO);

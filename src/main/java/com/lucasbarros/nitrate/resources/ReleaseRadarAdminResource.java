@@ -13,7 +13,7 @@ import java.time.Duration;
 @RequestMapping("/admin/release-radar")
 public class ReleaseRadarAdminResource {
 
-    // juntos ficam bem abaixo do limite de duração de uma função na Vercel. As séries vêm antes,
+    // limitam cada chamada; o que faltar continua na próxima. As séries vêm antes,
     // com uma fatia menor: é uma consulta ao TMDB por série, e as que não couberem hoje são as
     // primeiras amanhã
     private static final Duration ORCAMENTO_SERIES = Duration.ofSeconds(25);
@@ -27,7 +27,7 @@ public class ReleaseRadarAdminResource {
 
     public record Resultado(ReleaseRadarService.ResultadoRadar filmes, SeriesRadarService.ResultadoRadar series) {}
 
-    // GET porque os Cron Jobs da Vercel chamam com GET; POST para chamadas manuais
+    // GET para as tarefas agendadas; POST para chamadas manuais
     @RequestMapping(method = {RequestMethod.GET, RequestMethod.POST})
     public Resultado verificar() {
         SeriesRadarService.ResultadoRadar series = seriesRadarService.verificar(ORCAMENTO_SERIES);
