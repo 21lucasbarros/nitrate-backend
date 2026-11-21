@@ -5,6 +5,7 @@ import com.lucasbarros.nitrate.dto.RecommendationResultDTO;
 import com.lucasbarros.nitrate.entities.FavoritePerson;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.Review;
+import com.lucasbarros.nitrate.entities.TasteProfile;
 import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.graph.MovieGraph;
 import com.lucasbarros.nitrate.graph.MovieGraphCache;
@@ -12,8 +13,11 @@ import com.lucasbarros.nitrate.recommender.RecommendationEngine;
 import com.lucasbarros.nitrate.recommender.RecommendationResult;
 import com.lucasbarros.nitrate.recommender.UserPreferences;
 import com.lucasbarros.nitrate.repositories.FavoritePersonRepository;
+import com.lucasbarros.nitrate.repositories.TasteProfileRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
+import com.lucasbarros.nitrate.taste.TasteMatcher;
+import com.lucasbarros.nitrate.taste.TasteMatcher.Preferencias;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -37,6 +41,8 @@ public class RecommendationService {
     private static final int MAX_POR_DIRETOR = 2;
     private static final int MAX_POR_FRANQUIA = 2;
     private static final Duration VALIDADE_CACHE = Duration.ofMinutes(10);
+    // empurrão para os filmes que combinam com as respostas do questionário de gostos
+    private static final double BONUS_GOSTO = 1.25;
 
     private record RecomendacoesEmCache(List<RecommendationResultDTO> resultado, Instant em) {}
 
@@ -50,6 +56,12 @@ public class RecommendationService {
 
     @Autowired
     private FavoritePersonRepository favoritePersonRepository;
+
+    @Autowired
+    private TasteProfileRepository tasteProfileRepository;
+
+    @Autowired
+    private TasteMatcher tasteMatcher;
 
     /**
      * Recomendações a partir do diário: os últimos filmes que a pessoa curtiu ou avaliou bem
@@ -100,6 +112,23 @@ public class RecommendationService {
                 if (semNota.size() < MAX_SEMENTES && !semNota.contains(id)) semNota.add(id);
             }
         }
+        // quantas curtidas de verdade guiam o grafo: com poucas, as respostas do questionário mandam mais
+        int curtidasReais = sementes.size();
+
+        // questionário do onboarding: os filmes que a pessoa marcou completam as vagas de semente.
+        // Conforme ela curte filmes de verdade, eles perdem espaço até sumirem
+        TasteProfile gosto = tasteProfileRepository.findById(user.getId()).orElse(null);
+        Preferencias prefs = gosto == null ? null
+                : Preferencias.de(gosto.getGenres(), gosto.getAnswers(), gosto.getEras());
+        boolean temGosto = prefs != null && !prefs.vazia();
+        if (gosto != null) {
+            // disse que já viu: não faz sentido recomendar
+            jaRegistrados.addAll(gosto.getSeedMovieIds());
+            for (Long id : gosto.getSeedMovieIds()) {
+                if (sementes.size() >= MAX_SEMENTES) break;
+                if (!sementes.contains(id)) sementes.add(id);
+            }
+        }
         if (sementes.isEmpty()) {
             sementes = semNota;
         }
@@ -112,7 +141,9 @@ public class RecommendationService {
             }
         }
         if (preferencias.getLikedMovies().isEmpty()) {
-            return new ArrayList<>();
+            // nenhum filme para guiar o grafo: se respondeu o questionário, vão os que mais combinam
+            if (!temGosto) return new ArrayList<>();
+            return porGosto(prefs, grafo, jaRegistrados, TOP_N_USUARIO).stream().map(RecommendationResultDTO::new).toList();
         }
         // atores e diretores favoritos do perfil: filmes ligados a eles ganham peso extra
         for (FavoritePerson favorito : favoritePersonRepository.findByUserOrderByPositionAsc(user)) {
@@ -127,14 +158,29 @@ public class RecommendationService {
         // estourarem o limite por diretor/franquia são descartados
         List<RecommendationResult> resultados = new RecommendationEngine(grafo)
                 .recommend(preferencias, TOP_N_USUARIO * 4 + jaRegistrados.size());
+        if (temGosto) {
+            resultados = comEmpurrao(resultados, prefs, curtidasReais);
+        }
 
-        // variedade: sem limite, um diretor ou uma saga que a pessoa ama ocupa a home inteira
+        List<RecommendationResult> escolhidos = variados(resultados, jaRegistrados);
+        if (temGosto && curtidasReais < MAX_SEMENTES) {
+            escolhidos = garantirGosto(escolhidos, prefs, grafo, jaRegistrados);
+        }
+        return escolhidos.stream().map(RecommendationResultDTO::new).toList();
+    }
+
+    /**
+     * Os TOP_N_USUARIO primeiros, sem os já registrados e com variedade: sem limite, um diretor ou
+     * uma saga que a pessoa ama ocupa a home inteira.
+     */
+    private List<RecommendationResult> variados(List<RecommendationResult> resultados, Set<Long> jaRegistrados) {
         Map<String, Integer> porDiretor = new HashMap<>();
         Map<String, Integer> porFranquia = new HashMap<>();
-        List<RecommendationResultDTO> dtos = new ArrayList<>();
+        Set<Long> vistos = new HashSet<>();
+        List<RecommendationResult> escolhidos = new ArrayList<>();
         for (RecommendationResult resultado : resultados) {
             Movie filme = resultado.getMovie();
-            if (jaRegistrados.contains(filme.getId())) continue;
+            if (jaRegistrados.contains(filme.getId()) || !vistos.add(filme.getId())) continue;
 
             String diretor = filme.getDirector() != null ? filme.getDirector().getName().toLowerCase() : null;
             String franquia = filme.getFranchise() != null ? filme.getFranchise().getName().toLowerCase() : null;
@@ -143,10 +189,75 @@ public class RecommendationService {
             if (diretor != null) porDiretor.merge(diretor, 1, Integer::sum);
             if (franquia != null) porFranquia.merge(franquia, 1, Integer::sum);
 
-            dtos.add(new RecommendationResultDTO(resultado));
-            if (dtos.size() == TOP_N_USUARIO) break;
+            escolhidos.add(resultado);
+            if (escolhidos.size() == TOP_N_USUARIO) break;
         }
-        return dtos;
+        return escolhidos;
+    }
+
+    /**
+     * O que combina com as respostas sobe, com o motivo junto. Quanto menos curtidas de verdade,
+     * mais forte: quem acabou de responder "comédia romântica" e marcou dois filmes não pode receber
+     * a filmografia inteira do diretor de um deles.
+     */
+    private List<RecommendationResult> comEmpurrao(List<RecommendationResult> resultados, Preferencias prefs,
+                                                   int curtidasReais) {
+        double combina = curtidasReais == 0 ? 2.0 : curtidasReais < MAX_SEMENTES ? 1.5 : BONUS_GOSTO;
+        double naoCombina = curtidasReais == 0 ? 0.4 : curtidasReais < MAX_SEMENTES ? 0.75 : 1.0;
+        List<RecommendationResult> ajustados = new ArrayList<>(resultados.size());
+        for (RecommendationResult r : resultados) {
+            List<String> motivos = tasteMatcher.motivos(prefs, r.getMovie());
+            if (motivos.isEmpty()) {
+                ajustados.add(new RecommendationResult(r.getMovie(), r.getScore() * naoCombina, r.getReasons()));
+            } else {
+                // o motivo do questionário vem primeiro: é o que a pessoa reconhece como dela
+                List<String> razoes = new ArrayList<>();
+                razoes.add("combina com o que você curte: " + motivos.get(0));
+                razoes.addAll(r.getReasons());
+                ajustados.add(new RecommendationResult(r.getMovie(), r.getScore() * combina, razoes));
+            }
+        }
+        ajustados.sort(Comparator.comparingDouble(RecommendationResult::getScore).reversed());
+        return ajustados;
+    }
+
+    /**
+     * Enquanto o diário é pequeno, pelo menos metade das recomendações combina com as respostas:
+     * o que o grafo trouxe e combina vem primeiro, depois os melhores do questionário, e o resto do
+     * grafo completa.
+     */
+    private List<RecommendationResult> garantirGosto(List<RecommendationResult> escolhidos, Preferencias prefs,
+                                                     MovieGraph grafo, Set<Long> jaRegistrados) {
+        int minimo = TOP_N_USUARIO / 2;
+        List<RecommendationResult> combinam = new ArrayList<>();
+        List<RecommendationResult> resto = new ArrayList<>();
+        for (RecommendationResult r : escolhidos) {
+            (tasteMatcher.combina(prefs, r.getMovie()) ? combinam : resto).add(r);
+        }
+        if (combinam.size() >= minimo) return escolhidos;
+
+        Set<Long> excluir = new HashSet<>(jaRegistrados);
+        escolhidos.forEach(r -> excluir.add(r.getMovie().getId()));
+        List<RecommendationResult> juntos = new ArrayList<>(combinam);
+        juntos.addAll(porGosto(prefs, grafo, excluir, minimo - combinam.size()));
+        juntos.addAll(resto);
+        // nova passada de variedade: os do questionário podem repetir diretor com os do grafo
+        return variados(juntos, jaRegistrados);
+    }
+
+    /** os filmes que mais combinam com as respostas, com "porque você curte ..." de motivo */
+    private List<RecommendationResult> porGosto(Preferencias prefs, MovieGraph grafo, Set<Long> excluir, int quantos) {
+        List<Movie> filmes = tasteMatcher.melhores(prefs, grafo.getAllMovies(), excluir, quantos);
+        List<RecommendationResult> resultados = new ArrayList<>(filmes.size());
+        for (int i = 0; i < filmes.size(); i++) {
+            Movie filme = filmes.get(i);
+            List<String> motivos = tasteMatcher.motivos(prefs, filme).stream()
+                    .map(m -> "porque você curte " + m)
+                    .toList();
+            // pontuação só para manter a ordem; o front não mostra
+            resultados.add(new RecommendationResult(filme, filmes.size() - i, motivos));
+        }
+        return resultados;
     }
 
     public List<RecommendationResultDTO> recomendar(RecommendationRequestDTO request) {

@@ -49,6 +49,11 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     long countByUserAndTextIsNotNull(User user);
     long countByUserAndLikedTrue(User user);
 
+    // quantas vezes cada filme foi registrado no Nitrate: a "popularidade" usada no onboarding
+    // (o filme não guarda a popularidade do TMDB). Linhas: [Long movieId, Long registros]
+    @Query("select r.movie.id, count(r) from Review r group by r.movie.id")
+    List<Object[]> countPorFilme();
+
     // painel de admin
     long countByCreatedAtAfter(Instant desde);
     long countByTextIsNotNull();

@@ -20,6 +20,7 @@ import com.lucasbarros.nitrate.repositories.ReviewLikeRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.repositories.UserAvatarRepository;
 import com.lucasbarros.nitrate.repositories.UserBadgeRepository;
+import com.lucasbarros.nitrate.repositories.TasteProfileRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.repositories.WatchlistRepository;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
@@ -58,6 +59,7 @@ public class AccountService {
     @Autowired private UserRepository userRepository;
     @Autowired private UserAvatarRepository userAvatarRepository;
     @Autowired private UserBadgeRepository userBadgeRepository;
+    @Autowired private TasteProfileRepository tasteProfileRepository;
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private WatchlistRepository watchlistRepository;
     @Autowired private FavoriteFilmRepository favoriteFilmRepository;
@@ -189,6 +191,7 @@ public class AccountService {
         reviewRepository.deleteAllByUser(salvo);
         followRepository.deleteAllInvolving(salvo);
         userBadgeRepository.deleteAllByUser(salvo);
+        tasteProfileRepository.findById(salvo.getId()).ifPresent(tasteProfileRepository::delete);
         userAvatarRepository.findById(salvo.getId()).ifPresent(userAvatarRepository::delete);
         userRepository.delete(salvo);
     }

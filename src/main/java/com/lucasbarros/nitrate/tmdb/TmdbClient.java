@@ -33,6 +33,25 @@ public class TmdbClient {
         return resposta;
     }
 
+    /**
+     * Filmes com uma palavra-chave do TMDB, dos mais populares para os menos (ex.: 4344 = "musical",
+     * que o TMDB usa no lugar de um gênero). Só com algum número de votos, para ficar nos conhecidos.
+     */
+    public TmdbPopularResponseDTO descobrirPorPalavraChave(int palavraChave, int pagina) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/discover/movie")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("with_keywords", palavraChave)
+                        .queryParam("sort_by", "popularity.desc")
+                        .queryParam("include_adult", false)
+                        .queryParam("vote_count.gte", 20)
+                        .queryParam("page", pagina)
+                        .build())
+                .retrieve()
+                .body(TmdbPopularResponseDTO.class);
+    }
+
     /** só os detalhes do filme (sem elenco): para preencher dados que faltam, como a data de estreia */
     public TmdbMovieDetailDTO buscarDetalhes(Long tmdbId) {
         return restClient().get()
