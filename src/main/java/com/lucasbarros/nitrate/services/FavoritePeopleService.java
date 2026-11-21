@@ -29,15 +29,18 @@ public class FavoritePeopleService {
     @Autowired private UserRepository userRepository;
     @Autowired private TmdbClient tmdbClient;
     @Autowired private RecommendationService recommendationService;
+    @Autowired private PersonSlugService personSlugService;
 
     @Transactional(readOnly = true)
     public FavoritePeopleDTO favoritos(String username) {
         User user = userRepository.findFirstByUsernameIgnoreCase(username.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + username));
+        List<FavoritePerson> favoritos = favoritePersonRepository.findByUserOrderByPositionAsc(user);
+        Map<Long, String> slugs = slugs(favoritos);
         List<FavoritePersonDTO> atores = new ArrayList<>();
         List<FavoritePersonDTO> diretores = new ArrayList<>();
-        for (FavoritePerson f : favoritePersonRepository.findByUserOrderByPositionAsc(user)) {
-            (f.getKind() == FavoritePerson.Kind.ACTOR ? atores : diretores).add(new FavoritePersonDTO(f));
+        for (FavoritePerson f : favoritos) {
+            (f.getKind() == FavoritePerson.Kind.ACTOR ? atores : diretores).add(new FavoritePersonDTO(f, slugs.get(f.getTmdbId())));
         }
         return new FavoritePeopleDTO(atores, diretores);
     }
@@ -76,15 +79,21 @@ public class FavoritePeopleService {
         }
 
         favoritePersonRepository.deleteAllByUserAndKind(eu, tipo);
-        List<FavoritePersonDTO> dtos = new ArrayList<>();
+        List<FavoritePerson> salvos = new ArrayList<>();
         for (int i = 0; i < ids.size(); i++) {
             Pessoa p = pessoas.get(i);
-            FavoritePerson salvo = favoritePersonRepository.save(
-                    new FavoritePerson(eu, tipo, ids.get(i), p.nome(), p.foto(), i + 1));
-            dtos.add(new FavoritePersonDTO(salvo));
+            salvos.add(favoritePersonRepository.save(new FavoritePerson(eu, tipo, ids.get(i), p.nome(), p.foto(), i + 1)));
         }
+        Map<Long, String> slugs = slugs(salvos);
+        List<FavoritePersonDTO> dtos = salvos.stream().map(f -> new FavoritePersonDTO(f, slugs.get(f.getTmdbId()))).toList();
         // os favoritos pesam nas recomendações da home
         recommendationService.invalidar(eu.getId());
         return dtos;
+    }
+
+    private Map<Long, String> slugs(List<FavoritePerson> favoritos) {
+        Map<Long, String> nomes = new HashMap<>();
+        favoritos.forEach(f -> nomes.put(f.getTmdbId(), f.getName()));
+        return personSlugService.slugs(nomes);
     }
 }

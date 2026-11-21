@@ -8,6 +8,6 @@ import java.util.List;
  */
 public record MovieCreditsDTO(List<Person> directors, List<Person> cast, String backdropPath, String tagline) {
 
-    /** `role`: personagem, para o elenco; nulo para a direção */
-    public record Person(Long tmdbId, String name, String role, String profilePath) {}
+    /** `role`: personagem, para o elenco; nulo para a direção. `slug` nulo: o link usa o id */
+    public record Person(Long tmdbId, String name, String role, String profilePath, String slug) {}
 }

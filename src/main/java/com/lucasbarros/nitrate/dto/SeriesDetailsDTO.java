@@ -21,7 +21,7 @@ public record SeriesDetailsDTO(
         List<Person> cast) {
 
     /** `role`: personagem(ns), para o elenco; nulo para quem criou. `episodes`: em quantos episódios aparece */
-    public record Person(Long tmdbId, String name, String role, String profilePath, Integer episodes) {}
+    public record Person(Long tmdbId, String name, String role, String profilePath, Integer episodes, String slug) {}
 
     public record Season(int seasonNumber, String name, String overview, Integer episodeCount,
                          String airDate, String posterPath, Double rating) {}

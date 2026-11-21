@@ -7,6 +7,7 @@ import java.util.List;
 public class PersonDetailDTO {
     private Long tmdbId;
     private String name;
+    private String slug; // nulo se o nome não tem versão em letras latinas: o endereço fica com o id
     private String profilePath;
     private String department;
     private String biography;
@@ -15,9 +16,10 @@ public class PersonDetailDTO {
     private List<PersonCreditDTO> directed;
     private List<PersonCreditDTO> acted;
 
-    public PersonDetailDTO(TmdbPersonDetailDTO pessoa, List<PersonCreditDTO> directed, List<PersonCreditDTO> acted) {
+    public PersonDetailDTO(TmdbPersonDetailDTO pessoa, String slug, List<PersonCreditDTO> directed, List<PersonCreditDTO> acted) {
         this.tmdbId = pessoa.getId();
         this.name = pessoa.getName();
+        this.slug = slug;
         this.profilePath = pessoa.getProfilePath();
         this.department = pessoa.getKnownForDepartment();
         this.biography = pessoa.getBiography();
@@ -29,6 +31,7 @@ public class PersonDetailDTO {
 
     public Long getTmdbId() { return tmdbId; }
     public String getName() { return name; }
+    public String getSlug() { return slug; }
     public String getProfilePath() { return profilePath; }
     public String getDepartment() { return department; }
     public String getBiography() { return biography; }

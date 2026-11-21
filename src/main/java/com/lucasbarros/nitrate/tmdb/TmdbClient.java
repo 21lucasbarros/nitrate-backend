@@ -146,6 +146,18 @@ public class TmdbClient {
                 .body(TmdbPersonDetailDTO.class);
     }
 
+    /** nome em inglês, para o slug de quem o TMDB devolve no alfabeto original (ex.: diretores gregos) */
+    public TmdbPersonDetailDTO buscarPessoaEmIngles(Long personId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/person/{id}")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "en-US")
+                        .build(personId))
+                .retrieve()
+                .body(TmdbPersonDetailDTO.class);
+    }
+
     public TmdbPersonDetailDTO buscarPessoaComFilmografia(Long personId) {
         return restClient().get()
                 .uri(uriBuilder -> uriBuilder

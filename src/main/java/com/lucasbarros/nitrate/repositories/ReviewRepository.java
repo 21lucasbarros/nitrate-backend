@@ -99,6 +99,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             "where r.rating is not null and r.movie.tmdbId in :tmdbIds group by r.movie.tmdbId")
     List<Object[]> findMediasPorTmdbId(@Param("tmdbIds") Collection<Long> tmdbIds);
 
+    // quais destes filmes (ids do TMDB) a pessoa já registrou: progresso na filmografia de alguém
+    @Query("select distinct r.movie.tmdbId from Review r where r.user = :user and r.movie.tmdbId in :tmdbIds")
+    List<Long> findTmdbIdsAssistidos(@Param("user") User user, @Param("tmdbIds") Collection<Long> tmdbIds);
+
     @Modifying
     @Query("delete from Review r where r.user = :user")
     void deleteAllByUser(@Param("user") User user);

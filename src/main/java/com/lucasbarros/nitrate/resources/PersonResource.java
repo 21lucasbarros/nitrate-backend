@@ -21,8 +21,9 @@ public class PersonResource {
         return personService.pesquisar(Normalizer.normalize(q, Normalizer.Form.NFC));
     }
 
-    @GetMapping("/{tmdbId}")
-    public PersonDetailDTO detalhe(@PathVariable Long tmdbId) {
-        return personService.detalhe(tmdbId);
+    // slug ("ben-stiller") ou id do TMDB: os links antigos e o app usam o id
+    @GetMapping("/{ref}")
+    public PersonDetailDTO detalhe(@PathVariable String ref) {
+        return personService.detalhe(ref);
     }
 }

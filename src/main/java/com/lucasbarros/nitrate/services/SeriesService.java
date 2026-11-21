@@ -56,6 +56,7 @@ public class SeriesService {
     @Autowired private SeriesRepository seriesRepository;
     @Autowired private SeriesReviewRepository seriesReviewRepository;
     @Autowired private TmdbClient tmdbClient;
+    @Autowired private PersonSlugService personSlugService;
 
     // mesma ideia dos filmes: duas aberturas simultâneas da mesma série não importam em dobro
     private final ReentrantLock importacao = new ReentrantLock();
@@ -193,21 +194,31 @@ public class SeriesService {
         serie.setSlug(slug); // o endereço não muda mesmo que o nome mude no TMDB
         seriesRepository.save(serie);
 
-        List<SeriesDetailsDTO.Person> criadores = d.getCreatedBy().stream()
-                .map(c -> new SeriesDetailsDTO.Person(c.getId(), c.getName(), null, c.getProfilePath(), null))
-                .toList();
-
-        List<SeriesDetailsDTO.Person> elenco = new ArrayList<>();
+        List<TmdbTvDetailDTO.CastMember> principais = new ArrayList<>();
         if (d.getAggregateCredits() != null) {
             List<TmdbTvDetailDTO.CastMember> ordenado = new ArrayList<>(d.getAggregateCredits().getCast());
             ordenado.sort(Comparator.comparing(m -> m.getOrder() == null ? Integer.MAX_VALUE : m.getOrder()));
-            for (TmdbTvDetailDTO.CastMember m : ordenado.subList(0, Math.min(MAX_ELENCO, ordenado.size()))) {
-                String papeis = m.getRoles().stream().map(TmdbTvDetailDTO.Role::getCharacter)
-                        .filter(c -> c != null && !c.isBlank()).distinct().limit(2)
-                        .collect(Collectors.joining(" / "));
-                elenco.add(new SeriesDetailsDTO.Person(m.getId(), m.getName(), papeis.isEmpty() ? null : papeis,
-                        m.getProfilePath(), m.getTotalEpisodeCount()));
-            }
+            principais = ordenado.subList(0, Math.min(MAX_ELENCO, ordenado.size()));
+        }
+
+        // o link de cada pessoa usa o slug ("/person/bryan-cranston")
+        Map<Long, String> nomes = new HashMap<>();
+        d.getCreatedBy().forEach(c -> nomes.put(c.getId(), c.getName()));
+        principais.forEach(m -> nomes.put(m.getId(), m.getName()));
+        Map<Long, String> slugs = personSlugService.slugs(nomes);
+
+        List<SeriesDetailsDTO.Person> criadores = d.getCreatedBy().stream()
+                .map(c -> new SeriesDetailsDTO.Person(c.getId(), c.getName(), null, c.getProfilePath(), null,
+                        slugs.get(c.getId())))
+                .toList();
+
+        List<SeriesDetailsDTO.Person> elenco = new ArrayList<>();
+        for (TmdbTvDetailDTO.CastMember m : principais) {
+            String papeis = m.getRoles().stream().map(TmdbTvDetailDTO.Role::getCharacter)
+                    .filter(c -> c != null && !c.isBlank()).distinct().limit(2)
+                    .collect(Collectors.joining(" / "));
+            elenco.add(new SeriesDetailsDTO.Person(m.getId(), m.getName(), papeis.isEmpty() ? null : papeis,
+                    m.getProfilePath(), m.getTotalEpisodeCount(), slugs.get(m.getId())));
         }
 
         // especiais (temporada 0) por último

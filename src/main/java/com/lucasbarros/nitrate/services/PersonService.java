@@ -6,6 +6,7 @@ import com.lucasbarros.nitrate.dto.PersonSummaryDTO;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
+import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import com.lucasbarros.nitrate.tmdb.TmdbClient;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonCreditDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonDetailDTO;
@@ -13,8 +14,11 @@ import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonSearchResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 // atores e diretores vêm direto do TMDB; não guardamos pessoas no banco
 @Service
@@ -27,17 +31,55 @@ public class PersonService {
     @Autowired private TmdbClient tmdbClient;
     @Autowired private MovieRepository movieRepository;
     @Autowired private ReviewRepository reviewRepository;
+    @Autowired private PersonSlugService personSlugService;
+
+    // filmografias mudam pouco e são lidas pela página, pelas conquistas e pelo grafo: uma consulta
+    // ao TMDB a cada poucas horas basta
+    private static final Duration VALIDADE_FILMOGRAFIA = Duration.ofHours(6);
+    private final Map<Long, FilmografiaEmCache> cacheFilmografia = new ConcurrentHashMap<>();
+
+    private record FilmografiaEmCache(TmdbPersonDetailDTO pessoa, Instant em) {}
+
+    /** filmes que entram na conta da filmografia: os que a página mostra, direção e atuação */
+    public record Filmografia(TmdbPersonDetailDTO pessoa, List<TmdbPersonCreditDTO> dirigidos, List<TmdbPersonCreditDTO> atuados) {
+
+        /** sem repetir quem dirigiu e atuou no mesmo filme */
+        public Set<Long> tmdbIds() {
+            Set<Long> ids = new LinkedHashSet<>();
+            dirigidos.forEach(c -> ids.add(c.getId()));
+            atuados.forEach(c -> ids.add(c.getId()));
+            return ids;
+        }
+
+        /** só os já lançados: filme anunciado não dá para ter visto */
+        public Set<Long> lancados() {
+            String hoje = LocalDate.now().toString();
+            Set<Long> ids = new LinkedHashSet<>();
+            for (List<TmdbPersonCreditDTO> creditos : List.of(dirigidos, atuados)) {
+                for (TmdbPersonCreditDTO c : creditos) {
+                    String data = c.getReleaseDate();
+                    if (data != null && !data.isEmpty() && data.compareTo(hoje) <= 0) ids.add(c.getId());
+                }
+            }
+            return ids;
+        }
+    }
 
     public List<PersonSummaryDTO> pesquisar(String termo) {
         List<PersonSummaryDTO> resultados = new ArrayList<>();
         if (termo == null || termo.trim().length() < TERMO_MIN) {
             return resultados;
         }
+        List<TmdbPersonSearchResponseDTO.Result> relevantes = new ArrayList<>();
         for (TmdbPersonSearchResponseDTO.Result pessoa : tmdbClient.pesquisarPessoas(termo.trim()).getResults()) {
             // não filtramos por departamento: muitos diretores (ex.: James Gunn) estão como "Writing".
-            if (relevante(pessoa)) {
-                resultados.add(new PersonSummaryDTO(pessoa));
-            }
+            if (relevante(pessoa)) relevantes.add(pessoa);
+        }
+        Map<Long, String> nomes = new HashMap<>();
+        relevantes.forEach(p -> nomes.put(p.getId(), p.getName()));
+        Map<Long, String> slugs = personSlugService.slugs(nomes);
+        for (TmdbPersonSearchResponseDTO.Result pessoa : relevantes) {
+            resultados.add(new PersonSummaryDTO(pessoa, slugs.get(pessoa.getId())));
         }
         return resultados;
     }
@@ -56,25 +98,21 @@ public class PersonService {
         return false;
     }
 
-    public PersonDetailDTO detalhe(Long personId) {
-        TmdbPersonDetailDTO pessoa = tmdbClient.buscarPessoaComFilmografia(personId);
+    /** `ref`: o slug ("ben-stiller") ou o id do TMDB (links antigos e o app) */
+    public Long resolver(String ref) {
+        if (ref != null && ref.matches("\\d{1,18}")) return Long.valueOf(ref);
+        return personSlugService.tmdbIdDe(Objects.requireNonNullElse(ref, "").trim().toLowerCase(Locale.ROOT))
+                .orElseThrow(() -> new ResourceNotFoundException("Pessoa não encontrada: " + ref));
+    }
 
-        List<TmdbPersonCreditDTO> dirigidos = new ArrayList<>();
-        for (TmdbPersonCreditDTO credito : pessoa.getMovieCredits().getCrew()) {
-            if ("Director".equals(credito.getJob())) dirigidos.add(credito);
-        }
-        List<TmdbPersonCreditDTO> atuados = new ArrayList<>();
-        for (TmdbPersonCreditDTO credito : pessoa.getMovieCredits().getCast()) {
-            if (!ehAparicaoComoSiMesmo(credito)) atuados.add(credito);
-        }
-
-        dirigidos = maisConhecidos(dirigidos, MAX_CREDITOS);
-        atuados = maisConhecidos(atuados, MAX_CREDITOS);
+    public PersonDetailDTO detalhe(String ref) {
+        Filmografia filmografia = filmografia(resolver(ref));
+        TmdbPersonDetailDTO pessoa = filmografia.pessoa();
+        List<TmdbPersonCreditDTO> dirigidos = filmografia.dirigidos();
+        List<TmdbPersonCreditDTO> atuados = filmografia.atuados();
 
         // marca com o id local os filmes que já estão no banco (abrem direto)
-        Set<Long> tmdbIds = new HashSet<>();
-        for (TmdbPersonCreditDTO c : dirigidos) tmdbIds.add(c.getId());
-        for (TmdbPersonCreditDTO c : atuados) tmdbIds.add(c.getId());
+        Set<Long> tmdbIds = filmografia.tmdbIds();
         Map<Long, Movie> localPorTmdbId = new HashMap<>();
         Map<Long, Object[]> mediaPorTmdbId = new HashMap<>();
         if (!tmdbIds.isEmpty()) {
@@ -87,9 +125,36 @@ public class PersonService {
             }
         }
 
-        return new PersonDetailDTO(pessoa,
+        return new PersonDetailDTO(pessoa, personSlugService.slug(pessoa.getId(), pessoa.getName()),
                 paraDTO(dirigidos, localPorTmdbId, mediaPorTmdbId),
                 paraDTO(atuados, localPorTmdbId, mediaPorTmdbId));
+    }
+
+    /** direção e atuação como a página mostra: sem aparições como si mesmo, os mais conhecidos primeiro */
+    public Filmografia filmografia(Long personId) {
+        TmdbPersonDetailDTO pessoa = pessoaComFilmografia(personId);
+        if (pessoa == null || pessoa.getId() == null) {
+            throw new ResourceNotFoundException("Pessoa não encontrada. Id: " + personId);
+        }
+        List<TmdbPersonCreditDTO> dirigidos = new ArrayList<>();
+        for (TmdbPersonCreditDTO credito : pessoa.getMovieCredits().getCrew()) {
+            if ("Director".equals(credito.getJob())) dirigidos.add(credito);
+        }
+        List<TmdbPersonCreditDTO> atuados = new ArrayList<>();
+        for (TmdbPersonCreditDTO credito : pessoa.getMovieCredits().getCast()) {
+            if (!ehAparicaoComoSiMesmo(credito)) atuados.add(credito);
+        }
+        return new Filmografia(pessoa, maisConhecidos(dirigidos, MAX_CREDITOS), maisConhecidos(atuados, MAX_CREDITOS));
+    }
+
+    private TmdbPersonDetailDTO pessoaComFilmografia(Long personId) {
+        FilmografiaEmCache emCache = cacheFilmografia.get(personId);
+        if (emCache != null && emCache.em().plus(VALIDADE_FILMOGRAFIA).isAfter(Instant.now())) {
+            return emCache.pessoa();
+        }
+        TmdbPersonDetailDTO pessoa = tmdbClient.buscarPessoaComFilmografia(personId);
+        if (pessoa != null) cacheFilmografia.put(personId, new FilmografiaEmCache(pessoa, Instant.now()));
+        return pessoa;
     }
 
     /**
@@ -97,7 +162,7 @@ public class PersonService {
      * expandir o grafo: como ator, só papéis de destaque (topo dos créditos).
      */
     public List<Long> destaques(Long personId, boolean comoDiretor, int limite, int votosMinimos) {
-        TmdbPersonDetailDTO pessoa = tmdbClient.buscarPessoaComFilmografia(personId);
+        TmdbPersonDetailDTO pessoa = pessoaComFilmografia(personId);
         String hoje = LocalDate.now().toString();
 
         List<TmdbPersonCreditDTO> candidatos = new ArrayList<>();

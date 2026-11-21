@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -32,6 +34,7 @@ public class ReviewService {
     @Autowired private GraphExpansionService graphExpansionService;
     @Autowired private ReviewSocialService reviewSocialService;
     @Autowired private RecommendationService recommendationService;
+    @Autowired private AchievementService achievementService;
 
     @Transactional
     public ReviewDTO criar(User user, ReviewRequestDTO request) {
@@ -53,7 +56,18 @@ public class ReviewService {
 
         expandirGrafoSeGostou(review);
         recommendationService.invalidar(user.getId());
+        conferirConquistasDepoisDoCommit(user.getId(), filme.getId());
         return new ReviewDTO(review);
+    }
+
+    // a conferência roda em outra thread: antes do commit ela ainda não veria a review nova
+    private void conferirConquistasDepoisDoCommit(Long userId, Long movieId) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                achievementService.conferirDepoisDoRegistro(userId, movieId);
+            }
+        });
     }
 
     /**

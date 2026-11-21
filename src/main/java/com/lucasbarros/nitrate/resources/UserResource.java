@@ -1,6 +1,9 @@
 package com.lucasbarros.nitrate.resources;
 
 import com.lucasbarros.nitrate.dto.AccountDeletionDTO;
+import com.lucasbarros.nitrate.dto.AchievementDTO;
+import com.lucasbarros.nitrate.dto.AchievementVisibilityDTO;
+import com.lucasbarros.nitrate.dto.PersonProgressDTO;
 import com.lucasbarros.nitrate.dto.AccountExportDTO;
 import com.lucasbarros.nitrate.dto.AuthResponseDTO;
 import com.lucasbarros.nitrate.dto.EmailChangeDTO;
@@ -29,6 +32,7 @@ import com.lucasbarros.nitrate.dto.UserSummaryDTO;
 import com.lucasbarros.nitrate.dto.WatchlistItemDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
 import com.lucasbarros.nitrate.services.AccountService;
+import com.lucasbarros.nitrate.services.AchievementService;
 import com.lucasbarros.nitrate.services.AvatarService;
 import com.lucasbarros.nitrate.services.FavoritePeopleService;
 import com.lucasbarros.nitrate.services.FriendsService;
@@ -97,6 +101,9 @@ public class UserResource {
 
     @Autowired
     private ProfileCoverService profileCoverService;
+
+    @Autowired
+    private AchievementService achievementService;
 
     @GetMapping("/me")
     public UserProfileDTO me(@AuthenticationPrincipal CustomUserDetails principal) {
@@ -195,6 +202,20 @@ public class UserResource {
     }
 
     // o que as pessoas que eu sigo registraram por último
+    // quanto da filmografia de uma pessoa (slug ou id do TMDB) você já viu
+    @GetMapping("/me/people/{ref}/progress")
+    public PersonProgressDTO progressoNaFilmografia(@AuthenticationPrincipal CustomUserDetails principal,
+                                                    @PathVariable String ref) {
+        return achievementService.progresso(principal.getUser(), ref);
+    }
+
+    @PutMapping("/me/achievements/{id}")
+    public AchievementDTO definirVisibilidadeDaConquista(@AuthenticationPrincipal CustomUserDetails principal,
+                                                         @PathVariable Long id,
+                                                         @RequestBody AchievementVisibilityDTO body) {
+        return achievementService.definirVisibilidade(principal.getUser(), id, body.hidden());
+    }
+
     @GetMapping("/me/feed")
     public List<ReviewDTO> feed(@AuthenticationPrincipal CustomUserDetails principal,
                                 @RequestParam(defaultValue = "12") int limit) {
@@ -315,6 +336,13 @@ public class UserResource {
         @GetMapping("/{username}/favorites/people")
     public FavoritePeopleDTO pessoasFavoritas(@PathVariable String username) {
         return favoritePeopleService.favoritos(username);
+    }
+
+    // rota pública; para a dona, inclui as conquistas que ela tirou do perfil
+    @GetMapping("/{username}/achievements")
+    public List<AchievementDTO> conquistas(@AuthenticationPrincipal CustomUserDetails principal,
+                                           @PathVariable String username) {
+        return achievementService.doUsuario(username, principal == null ? null : principal.getUser());
     }
 
     @GetMapping("/{username}/watchlist")

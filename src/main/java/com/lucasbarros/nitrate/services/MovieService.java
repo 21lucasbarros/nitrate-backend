@@ -64,6 +64,9 @@ public class MovieService {
     @Autowired
     private ReviewRepository reviewRepository;
 
+    @Autowired
+    private PersonSlugService personSlugService;
+
     /** os filmes que mais gente registrou nos últimos dias; com pouca atividade recente, de todos os tempos */
     @Transactional(readOnly = true)
     public List<MovieDTO> emAltaNaComunidade() {
@@ -181,15 +184,26 @@ public class MovieService {
         List<MovieCreditsDTO.Person> direcao = new ArrayList<>();
         List<MovieCreditsDTO.Person> elenco = new ArrayList<>();
         if (creditos != null) {
-            for (TmdbCrewMemberDTO membro : creditos.getCrew()) {
-                if ("Director".equals(membro.getJob())) {
-                    direcao.add(new MovieCreditsDTO.Person(membro.getId(), membro.getName(), null, membro.getProfilePath()));
-                }
-            }
+            List<TmdbCrewMemberDTO> diretores = creditos.getCrew().stream()
+                    .filter(membro -> "Director".equals(membro.getJob()))
+                    .toList();
             List<TmdbCastMemberDTO> ordenado = new ArrayList<>(creditos.getCast());
             ordenado.sort(Comparator.comparing(m -> m.getOrder() == null ? Integer.MAX_VALUE : m.getOrder()));
-            for (TmdbCastMemberDTO membro : ordenado.subList(0, Math.min(MAX_ELENCO, ordenado.size()))) {
-                elenco.add(new MovieCreditsDTO.Person(membro.getId(), membro.getName(), membro.getCharacter(), membro.getProfilePath()));
+            List<TmdbCastMemberDTO> principais = ordenado.subList(0, Math.min(MAX_ELENCO, ordenado.size()));
+
+            // o link de cada pessoa usa o slug ("/person/ben-stiller")
+            Map<Long, String> nomes = new HashMap<>();
+            diretores.forEach(membro -> nomes.put(membro.getId(), membro.getName()));
+            principais.forEach(membro -> nomes.put(membro.getId(), membro.getName()));
+            Map<Long, String> slugs = personSlugService.slugs(nomes);
+
+            for (TmdbCrewMemberDTO membro : diretores) {
+                direcao.add(new MovieCreditsDTO.Person(membro.getId(), membro.getName(), null, membro.getProfilePath(),
+                        slugs.get(membro.getId())));
+            }
+            for (TmdbCastMemberDTO membro : principais) {
+                elenco.add(new MovieCreditsDTO.Person(membro.getId(), membro.getName(), membro.getCharacter(),
+                        membro.getProfilePath(), slugs.get(membro.getId())));
             }
         }
         String tagline = detalhe.getTagline() == null || detalhe.getTagline().isBlank() ? null : detalhe.getTagline();
