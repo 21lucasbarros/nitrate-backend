@@ -21,6 +21,9 @@ public class TmdbPersonCreditDTO {
     @JsonProperty("vote_count")
     private Integer voteCount;
 
+    @JsonProperty("vote_average")
+    private Double voteAverage;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getTitle() { return title; }
@@ -37,4 +40,6 @@ public class TmdbPersonCreditDTO {
     public void setPosterPath(String posterPath) { this.posterPath = posterPath; }
     public int getVoteCount() { return voteCount == null ? 0 : voteCount; }
     public void setVoteCount(Integer voteCount) { this.voteCount = voteCount; }
+    public Double getVoteAverage() { return voteAverage; }
+    public void setVoteAverage(Double voteAverage) { this.voteAverage = voteAverage; }
 }

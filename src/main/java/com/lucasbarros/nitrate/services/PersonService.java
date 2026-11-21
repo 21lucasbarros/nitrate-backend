@@ -5,6 +5,7 @@ import com.lucasbarros.nitrate.dto.PersonDetailDTO;
 import com.lucasbarros.nitrate.dto.PersonSummaryDTO;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
+import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.tmdb.TmdbClient;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonCreditDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonDetailDTO;
@@ -25,6 +26,7 @@ public class PersonService {
 
     @Autowired private TmdbClient tmdbClient;
     @Autowired private MovieRepository movieRepository;
+    @Autowired private ReviewRepository reviewRepository;
 
     public List<PersonSummaryDTO> pesquisar(String termo) {
         List<PersonSummaryDTO> resultados = new ArrayList<>();
@@ -74,11 +76,20 @@ public class PersonService {
         for (TmdbPersonCreditDTO c : dirigidos) tmdbIds.add(c.getId());
         for (TmdbPersonCreditDTO c : atuados) tmdbIds.add(c.getId());
         Map<Long, Movie> localPorTmdbId = new HashMap<>();
-        for (Movie filme : movieRepository.findByTmdbIdIn(tmdbIds)) {
-            localPorTmdbId.put(filme.getTmdbId(), filme);
+        Map<Long, Object[]> mediaPorTmdbId = new HashMap<>();
+        if (!tmdbIds.isEmpty()) {
+            for (Movie filme : movieRepository.findByTmdbIdIn(tmdbIds)) {
+                localPorTmdbId.put(filme.getTmdbId(), filme);
+            }
+            // nota média no Nitrate, para ordenar a filmografia pelos mais bem avaliados
+            for (Object[] linha : reviewRepository.findMediasPorTmdbId(tmdbIds)) {
+                mediaPorTmdbId.put((Long) linha[0], linha);
+            }
         }
 
-        return new PersonDetailDTO(pessoa, paraDTO(dirigidos, localPorTmdbId), paraDTO(atuados, localPorTmdbId));
+        return new PersonDetailDTO(pessoa,
+                paraDTO(dirigidos, localPorTmdbId, mediaPorTmdbId),
+                paraDTO(atuados, localPorTmdbId, mediaPorTmdbId));
     }
 
     /**
@@ -130,10 +141,14 @@ public class PersonService {
         return p.contains("self") || p.contains("himself") || p.contains("herself") || p.contains("ele mesmo") || p.contains("ela mesma");
     }
 
-    private List<PersonCreditDTO> paraDTO(List<TmdbPersonCreditDTO> creditos, Map<Long, Movie> localPorTmdbId) {
+    private List<PersonCreditDTO> paraDTO(List<TmdbPersonCreditDTO> creditos, Map<Long, Movie> localPorTmdbId,
+                                          Map<Long, Object[]> mediaPorTmdbId) {
         List<PersonCreditDTO> dtos = new ArrayList<>();
         for (TmdbPersonCreditDTO credito : creditos) {
-            dtos.add(new PersonCreditDTO(credito, localPorTmdbId.get(credito.getId())));
+            Object[] media = mediaPorTmdbId.get(credito.getId());
+            dtos.add(new PersonCreditDTO(credito, localPorTmdbId.get(credito.getId()),
+                    media == null ? null : (Double) media[1],
+                    media == null ? 0 : (Long) media[2]));
         }
         return dtos;
     }

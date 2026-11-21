@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -84,6 +85,12 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             "group by r.movie.id having count(distinct r.user) >= :minimo " +
             "order by avg(r.rating) desc, count(distinct r.user) desc")
     List<Object[]> findMaisBemAvaliados(@Param("minimo") long minimo, Pageable pageable);
+
+    // filmografia de uma pessoa: nota média e quantas pessoas avaliaram cada filme.
+    // Linhas: [Long tmdbId, Double media, Long pessoas]
+    @Query("select r.movie.tmdbId, avg(r.rating), count(distinct r.user) from Review r " +
+            "where r.rating is not null and r.movie.tmdbId in :tmdbIds group by r.movie.tmdbId")
+    List<Object[]> findMediasPorTmdbId(@Param("tmdbIds") Collection<Long> tmdbIds);
 
     @Modifying
     @Query("delete from Review r where r.user = :user")
