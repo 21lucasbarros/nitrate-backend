@@ -10,6 +10,7 @@ import com.lucasbarros.nitrate.dto.FilmDTO;
 import com.lucasbarros.nitrate.dto.FavoritePersonDTO;
 import com.lucasbarros.nitrate.dto.FavoritesRequestDTO;
 import com.lucasbarros.nitrate.entities.FavoritePerson;
+import com.lucasbarros.nitrate.dto.ActivityDTO;
 import com.lucasbarros.nitrate.dto.ActivityPageDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
 import com.lucasbarros.nitrate.dto.MovieListDTO;
@@ -37,6 +38,7 @@ import com.lucasbarros.nitrate.services.NotificationService;
 import com.lucasbarros.nitrate.services.ProfileCoverService;
 import com.lucasbarros.nitrate.services.RecommendationService;
 import com.lucasbarros.nitrate.services.RetrospectiveService;
+import com.lucasbarros.nitrate.services.MovieActivityService;
 import com.lucasbarros.nitrate.services.SocialService;
 import com.lucasbarros.nitrate.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,6 +85,9 @@ public class UserResource {
 
     @Autowired
     private FriendsService friendsService;
+
+    @Autowired
+    private MovieActivityService movieActivityService;
 
     @Autowired
     private FavoritePeopleService favoritePeopleService;
@@ -180,6 +185,13 @@ public class UserResource {
     public MovieUserStateDTO estadoDoFilme(@AuthenticationPrincipal CustomUserDetails principal,
                                            @PathVariable Long movieId) {
         return userService.estadoDoFilme(principal.getUser(), movieId);
+    }
+
+    // tudo o que eu fiz com o filme, do mais recente para o mais antigo
+    @GetMapping("/me/movies/{movieId}/activity")
+    public List<ActivityDTO> atividadeNoFilme(@AuthenticationPrincipal CustomUserDetails principal,
+                                              @PathVariable Long movieId) {
+        return movieActivityService.atividade(principal.getUser(), movieId);
     }
 
     // o que as pessoas que eu sigo registraram por último

@@ -41,6 +41,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     // a review mais recente do filme (pode haver várias: reassistidos)
     Optional<Review> findFirstByUserAndMovieOrderByWatchedOnDescCreatedAtDesc(User user, Movie movie);
     boolean existsByUserAndMovie(User user, Movie movie);
+    // atividade de uma pessoa com um filme: todos os registros dela
+    List<Review> findByUserAndMovieOrderByCreatedAtDesc(User user, Movie movie);
     long countByUserAndMovie(User user, Movie movie);
 
     // filmes diferentes no diário (reassistir não conta duas vezes)

@@ -3,6 +3,7 @@ package com.lucasbarros.nitrate.entities;
 import jakarta.persistence.*;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Objects;
 
 /** Um filme dentro de uma lista, na posição escolhida. */
@@ -28,6 +29,9 @@ public class MovieListEntry implements Serializable {
     @Column(nullable = false)
     private int position;
 
+    /** quando o filme entrou na lista; null nas entradas de antes deste campo existir */
+    private Instant addedAt = Instant.now();
+
     public MovieListEntry() {
     }
 
@@ -41,6 +45,8 @@ public class MovieListEntry implements Serializable {
     public MovieList getList() { return list; }
     public Movie getMovie() { return movie; }
     public int getPosition() { return position; }
+    public Instant getAddedAt() { return addedAt; }
+    public void setAddedAt(Instant addedAt) { this.addedAt = addedAt; }
 
     @Override
     public boolean equals(Object o) {

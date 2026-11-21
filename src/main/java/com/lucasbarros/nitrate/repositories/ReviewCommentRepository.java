@@ -1,5 +1,6 @@
 package com.lucasbarros.nitrate.repositories;
 
+import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.Review;
 import com.lucasbarros.nitrate.entities.ReviewComment;
 import com.lucasbarros.nitrate.entities.User;
@@ -22,6 +23,10 @@ public interface ReviewCommentRepository extends JpaRepository<ReviewComment, Lo
             "(select f.followed from Follow f where f.follower = :me)) " +
             "and c.createdAt < :antes order by c.createdAt desc, c.id desc")
     List<ReviewComment> findAtividade(@Param("me") User me, @Param("antes") Instant antes, Pageable pageable);
+
+    // atividade com um filme: comentários da pessoa em reviews dele
+    @Query("select c from ReviewComment c where c.user = :user and c.review.movie = :movie")
+    List<ReviewComment> findComentariosNoFilme(@Param("user") User user, @Param("movie") Movie movie);
 
     @Modifying
     @Query("delete from ReviewComment c where c.review = :review")

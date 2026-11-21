@@ -251,12 +251,19 @@ public class MovieListService implements ApplicationRunner {
         if (ids.size() > FILMES_MAX) {
             throw new IllegalArgumentException("Uma lista pode ter até " + FILMES_MAX + " filmes.");
         }
+        // quem continua na lista mantém a data em que entrou (a atividade do filme usa)
+        Map<Long, Instant> entradas = new HashMap<>();
+        lista.getEntries().forEach(e -> {
+            if (e.getAddedAt() != null) entradas.put(e.getMovie().getId(), e.getAddedAt());
+        });
         // o Hibernate insere antes de apagar: sem o flush, um filme que continua na lista
         // esbarraria na restrição única (lista, filme)
         lista.getEntries().clear();
         movieListRepository.saveAndFlush(lista);
         for (int i = 0; i < ids.size(); i++) {
-            lista.getEntries().add(new MovieListEntry(lista, buscarFilme(ids.get(i)), i + 1));
+            MovieListEntry entrada = new MovieListEntry(lista, buscarFilme(ids.get(i)), i + 1);
+            if (entradas.containsKey(ids.get(i))) entrada.setAddedAt(entradas.get(ids.get(i)));
+            lista.getEntries().add(entrada);
         }
     }
 

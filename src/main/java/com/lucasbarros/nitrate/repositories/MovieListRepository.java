@@ -1,6 +1,8 @@
 package com.lucasbarros.nitrate.repositories;
 
+import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.MovieList;
+import com.lucasbarros.nitrate.entities.MovieListEntry;
 import com.lucasbarros.nitrate.entities.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,4 +27,8 @@ public interface MovieListRepository extends JpaRepository<MovieList, Long> {
             "(select f.followed from Follow f where f.follower = :me)) " +
             "and l.createdAt < :antes order by l.createdAt desc, l.id desc")
     List<MovieList> findAtividade(@Param("me") User me, @Param("antes") Instant antes, Pageable pageable);
+
+    // atividade com um filme: as listas da pessoa (públicas ou não) em que ele está
+    @Query("select e from MovieListEntry e where e.list.user = :user and e.movie = :movie")
+    List<MovieListEntry> findEntradasDoFilme(@Param("user") User user, @Param("movie") Movie movie);
 }

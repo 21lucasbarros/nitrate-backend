@@ -1,5 +1,6 @@
 package com.lucasbarros.nitrate.repositories;
 
+import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.Review;
 import com.lucasbarros.nitrate.entities.ReviewLike;
 import com.lucasbarros.nitrate.entities.User;
@@ -32,6 +33,10 @@ public interface ReviewLikeRepository extends JpaRepository<ReviewLike, Long> {
             "(select f.followed from Follow f where f.follower = :me)) " +
             "and l.createdAt < :antes order by l.createdAt desc, l.id desc")
     List<ReviewLike> findAtividade(@Param("me") User me, @Param("antes") Instant antes, Pageable pageable);
+
+    // atividade com um filme: reviews dos outros sobre ele que a pessoa curtiu
+    @Query("select l from ReviewLike l where l.user = :user and l.review.movie = :movie and l.review.user <> :user")
+    List<ReviewLike> findCurtidasNoFilme(@Param("user") User user, @Param("movie") Movie movie);
 
     @Modifying
     @Query("delete from ReviewLike l where l.review = :review")
