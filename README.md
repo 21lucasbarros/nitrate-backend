@@ -2,7 +2,7 @@
 
 Este é o back-end de um projeto de recomendação de filmes. A API foi feita com Spring Boot e usa PostgreSQL para guardar usuários, filmes e informações relacionadas, como gêneros, atores e diretores.
 
-O projeto ainda está em desenvolvimento e faz parte de uma aplicação maior. A licença ainda não foi definida.
+O projeto ainda está em desenvolvimento e faz parte de uma aplicação maior. O código é proprietário: veja [Licença](#licença).
 
 ## Tecnologias
 
@@ -376,3 +376,7 @@ src/main/java/com/lucasbarros/nitrate/
 ├── services/       Regras de negócio
 └── tmdb/           Integração com o TMDB
 ```
+
+## Licença
+
+Copyright (c) 2026 Lucas Barros Simon. Todos os direitos reservados. O código está público apenas para consulta; copiar, modificar, redistribuir ou usar qualquer parte dele sem autorização por escrito é proibido. Veja o arquivo [LICENSE](LICENSE).
