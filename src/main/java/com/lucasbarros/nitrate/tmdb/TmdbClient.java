@@ -5,6 +5,9 @@ import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonSearchResponseDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPopularResponseDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbReleaseDatesDTO;
+import com.lucasbarros.nitrate.tmdb.dto.TmdbTvDetailDTO;
+import com.lucasbarros.nitrate.tmdb.dto.TmdbTvListResponseDTO;
+import com.lucasbarros.nitrate.tmdb.dto.TmdbTvSeasonDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbWatchProvidersDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -152,6 +155,78 @@ public class TmdbClient {
         return restClient().get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/movie/{id}/watch/providers")
+                        .queryParam("api_key", properties.getApiKey())
+                        .build(tmdbId))
+                .retrieve()
+                .body(TmdbWatchProvidersDTO.class);
+    }
+
+    // ---- séries (mesma chave e mesmos limites do TMDB; nada a pagar) ----
+
+    public TmdbTvListResponseDTO pesquisarSeries(String termo) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/search/tv")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .queryParam("include_adult", false)
+                        .queryParam("query", termo)
+                        .build())
+                .retrieve()
+                .body(TmdbTvListResponseDTO.class);
+    }
+
+    /** as séries mais vistas da semana no TMDB */
+    public TmdbTvListResponseDTO seriesEmAlta() {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/trending/tv/week")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .build())
+                .retrieve()
+                .body(TmdbTvListResponseDTO.class);
+    }
+
+    public TmdbTvListResponseDTO seriesMaisBemAvaliadas() {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/tv/top_rated")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .build())
+                .retrieve()
+                .body(TmdbTvListResponseDTO.class);
+    }
+
+    /** detalhes da série com o elenco de todas as temporadas */
+    public TmdbTvDetailDTO buscarSerie(Long tmdbId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/tv/{id}")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .queryParam("append_to_response", "aggregate_credits")
+                        .build(tmdbId))
+                .retrieve()
+                .body(TmdbTvDetailDTO.class);
+    }
+
+    public TmdbTvSeasonDTO buscarTemporada(Long tmdbId, int temporada) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/tv/{id}/season/{season}")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .build(tmdbId, temporada))
+                .retrieve()
+                .body(TmdbTvSeasonDTO.class);
+    }
+
+    public TmdbWatchProvidersDTO buscarOndeAssistirSerie(Long tmdbId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/tv/{id}/watch/providers")
                         .queryParam("api_key", properties.getApiKey())
                         .build(tmdbId))
                 .retrieve()

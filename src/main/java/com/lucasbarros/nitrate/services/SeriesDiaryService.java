@@ -1,0 +1,167 @@
+package com.lucasbarros.nitrate.services;
+
+import com.lucasbarros.nitrate.dto.SeriesDTO;
+import com.lucasbarros.nitrate.dto.SeriesReviewDTO;
+import com.lucasbarros.nitrate.dto.SeriesReviewRequestDTO;
+import com.lucasbarros.nitrate.dto.SeriesUserStateDTO;
+import com.lucasbarros.nitrate.entities.Series;
+import com.lucasbarros.nitrate.entities.SeriesReview;
+import com.lucasbarros.nitrate.entities.SeriesWatchlistItem;
+import com.lucasbarros.nitrate.entities.User;
+import com.lucasbarros.nitrate.repositories.SeriesReviewRepository;
+import com.lucasbarros.nitrate.repositories.SeriesWatchlistRepository;
+import com.lucasbarros.nitrate.repositories.UserRepository;
+import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
+import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+
+/** O diário de séries: registros (da série inteira ou de uma temporada) e a watchlist de séries. */
+@Service
+public class SeriesDiaryService {
+
+    private static final int TEXTO_MAX = 20000;
+
+    @Autowired private SeriesReviewRepository seriesReviewRepository;
+    @Autowired private SeriesWatchlistRepository seriesWatchlistRepository;
+    @Autowired private UserRepository userRepository;
+    @Autowired private SeriesService seriesService;
+    @Autowired private SeriesReviewSocialService seriesReviewSocialService;
+
+    @Transactional
+    public SeriesReviewDTO criar(User user, SeriesReviewRequestDTO request) {
+        if (request.seriesId() == null) {
+            throw new IllegalArgumentException("Informe a série (seriesId)");
+        }
+        Series serie = seriesService.buscar(request.seriesId());
+        SeriesReview review = new SeriesReview(user, serie);
+        aplicar(review, request);
+        review = seriesReviewRepository.save(review);
+
+        // terminou a série inteira: sai da watchlist
+        if (review.getSeasonNumber() == null) {
+            seriesWatchlistRepository.findByUserAndSeries(user, serie).ifPresent(seriesWatchlistRepository::delete);
+        }
+        return new SeriesReviewDTO(review);
+    }
+
+    @Transactional
+    public SeriesReviewDTO atualizar(User user, Long id, SeriesReviewRequestDTO request) {
+        SeriesReview review = buscarDoUsuario(user, id);
+        aplicar(review, request);
+        review.setUpdatedAt(Instant.now());
+        return new SeriesReviewDTO(review);
+    }
+
+    @Transactional
+    public void deletar(User user, Long id) {
+        SeriesReview review = buscarDoUsuario(user, id);
+        seriesReviewSocialService.limparReview(review);
+        seriesReviewRepository.delete(review);
+    }
+
+    @Transactional(readOnly = true)
+    public SeriesReviewDTO buscarPorId(Long id) {
+        return seriesReviewRepository.findById(id)
+                .map(SeriesReviewDTO::new)
+                .orElseThrow(() -> new ResourceNotFoundException("Review não encontrada. Id: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<SeriesReviewDTO> daSerie(Long seriesId) {
+        return seriesReviewRepository.findBySeriesOrderByCreatedAtDesc(seriesService.buscar(seriesId)).stream()
+                .map(SeriesReviewDTO::new)
+                .toList();
+    }
+
+    /** todos os registros de séries da pessoa, do mais recente para o mais antigo */
+    @Transactional(readOnly = true)
+    public List<SeriesReviewDTO> doUsuario(String username) {
+        return seriesReviewRepository.findByUserOrderByCreatedAtDesc(buscarPorUsername(username)).stream()
+                .map(SeriesReviewDTO::new)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SeriesUserStateDTO.WatchlistItem> watchlistDoUsuario(String username) {
+        return seriesWatchlistRepository.findByUserOrderByAddedAtDesc(buscarPorUsername(username)).stream()
+                .map(w -> new SeriesUserStateDTO.WatchlistItem(new SeriesDTO(w.getSeries()), w.getAddedAt()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public SeriesUserStateDTO estado(User user, Long seriesId) {
+        Series serie = seriesService.buscar(seriesId);
+        List<SeriesReviewDTO> reviews = seriesReviewRepository
+                .findByUserAndSeriesOrderByWatchedOnDescCreatedAtDesc(user, serie).stream()
+                .map(SeriesReviewDTO::new)
+                .toList();
+        return new SeriesUserStateDTO(reviews, seriesWatchlistRepository.existsByUserAndSeries(user, serie));
+    }
+
+    // idempotente: adicionar o que já está na lista não muda nada
+    @Transactional
+    public void adicionarNaWatchlist(User user, Long seriesId) {
+        Series serie = seriesService.buscar(seriesId);
+        if (!seriesWatchlistRepository.existsByUserAndSeries(user, serie)) {
+            seriesWatchlistRepository.save(new SeriesWatchlistItem(user, serie));
+        }
+    }
+
+    @Transactional
+    public void removerDaWatchlist(User user, Long seriesId) {
+        Series serie = seriesService.buscar(seriesId);
+        seriesWatchlistRepository.findByUserAndSeries(user, serie).ifPresent(seriesWatchlistRepository::delete);
+    }
+
+    private SeriesReview buscarDoUsuario(User user, Long id) {
+        SeriesReview review = seriesReviewRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Review não encontrada. Id: " + id));
+        if (!review.getUser().getId().equals(user.getId())) {
+            throw new ForbiddenException("Você só pode alterar as suas próprias reviews.");
+        }
+        return review;
+    }
+
+    private void aplicar(SeriesReview review, SeriesReviewRequestDTO request) {
+        Double nota = request.rating();
+        if (nota != null && (nota < 0.5 || nota > 5 || nota * 2 != Math.floor(nota * 2))) {
+            throw new IllegalArgumentException("A nota deve ir de 0.5 a 5, em passos de 0.5");
+        }
+
+        Integer temporada = request.seasonNumber();
+        Integer totalTemporadas = review.getSeries().getNumberOfSeasons();
+        if (temporada != null && (temporada < 0 || (totalTemporadas != null && temporada > totalTemporadas))) {
+            throw new IllegalArgumentException("Temporada inválida: " + temporada);
+        }
+
+        String texto = request.text() == null ? null : request.text().trim();
+        if (texto != null && texto.isEmpty()) texto = null;
+        if (texto != null && texto.length() > TEXTO_MAX) {
+            throw new IllegalArgumentException("A review pode ter no máximo " + TEXTO_MAX + " caracteres");
+        }
+
+        LocalDate assistidoEm = request.watchedOn() == null ? LocalDate.now() : request.watchedOn();
+        if (assistidoEm.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("A data em que assistiu não pode estar no futuro");
+        }
+
+        review.setSeasonNumber(temporada);
+        review.setRating(nota);
+        review.setText(texto);
+        review.setLiked(request.liked());
+        // sem texto não há o que esconder
+        review.setSpoiler(texto != null && request.spoiler());
+        review.setWatchedOn(assistidoEm);
+    }
+
+    private User buscarPorUsername(String username) {
+        return userRepository.findFirstByUsernameIgnoreCase(username.trim())
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + username));
+    }
+}

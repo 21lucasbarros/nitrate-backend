@@ -261,7 +261,7 @@ public class MovieService {
         return resultado;
     }
 
-    private static List<TmdbWatchProvidersDTO.Provider> concat(List<TmdbWatchProvidersDTO.Provider> a,
+    static List<TmdbWatchProvidersDTO.Provider> concat(List<TmdbWatchProvidersDTO.Provider> a,
                                                              List<TmdbWatchProvidersDTO.Provider> b) {
         List<TmdbWatchProvidersDTO.Provider> todos = new ArrayList<>(a);
         todos.addAll(b);
@@ -269,7 +269,7 @@ public class MovieService {
     }
 
     // na ordem de destaque do JustWatch, sem repetir o mesmo serviço
-    private static List<WatchProvidersDTO.Provider> provedores(List<TmdbWatchProvidersDTO.Provider> lista) {
+    static List<WatchProvidersDTO.Provider> provedores(List<TmdbWatchProvidersDTO.Provider> lista) {
         List<TmdbWatchProvidersDTO.Provider> ordenada = new ArrayList<>(lista);
         ordenada.sort(Comparator.comparingInt(TmdbWatchProvidersDTO.Provider::getDisplayPriority));
         Map<Long, WatchProvidersDTO.Provider> unicos = new LinkedHashMap<>();

@@ -8,6 +8,7 @@ import com.lucasbarros.nitrate.dto.UserProfileDTO;
 import com.lucasbarros.nitrate.entities.FavoritePerson;
 import com.lucasbarros.nitrate.entities.Follow;
 import com.lucasbarros.nitrate.entities.Movie;
+import com.lucasbarros.nitrate.entities.Series;
 import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.repositories.FavoriteFilmRepository;
 import com.lucasbarros.nitrate.repositories.FavoritePersonRepository;
@@ -18,6 +19,10 @@ import com.lucasbarros.nitrate.repositories.PasswordResetTokenRepository;
 import com.lucasbarros.nitrate.repositories.ReviewCommentRepository;
 import com.lucasbarros.nitrate.repositories.ReviewLikeRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
+import com.lucasbarros.nitrate.repositories.SeriesReviewCommentRepository;
+import com.lucasbarros.nitrate.repositories.SeriesReviewLikeRepository;
+import com.lucasbarros.nitrate.repositories.SeriesReviewRepository;
+import com.lucasbarros.nitrate.repositories.SeriesWatchlistRepository;
 import com.lucasbarros.nitrate.repositories.UserAvatarRepository;
 import com.lucasbarros.nitrate.repositories.UserBadgeRepository;
 import com.lucasbarros.nitrate.repositories.TasteProfileRepository;
@@ -62,6 +67,10 @@ public class AccountService {
     @Autowired private TasteProfileRepository tasteProfileRepository;
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private WatchlistRepository watchlistRepository;
+    @Autowired private SeriesReviewRepository seriesReviewRepository;
+    @Autowired private SeriesWatchlistRepository seriesWatchlistRepository;
+    @Autowired private SeriesReviewLikeRepository seriesReviewLikeRepository;
+    @Autowired private SeriesReviewCommentRepository seriesReviewCommentRepository;
     @Autowired private FavoriteFilmRepository favoriteFilmRepository;
     @Autowired private FavoritePersonRepository favoritePersonRepository;
     @Autowired private FollowRepository followRepository;
@@ -189,6 +198,11 @@ public class AccountService {
         favoritePersonRepository.deleteAllByUser(salvo);
         watchlistRepository.deleteAllByUser(salvo);
         reviewRepository.deleteAllByUser(salvo);
+        seriesWatchlistRepository.deleteAllByUser(salvo);
+        // antes dos registros de séries: curtidas e comentários apontam para eles
+        seriesReviewLikeRepository.deleteAllInvolving(salvo);
+        seriesReviewCommentRepository.deleteAllInvolving(salvo);
+        seriesReviewRepository.deleteAllByUser(salvo);
         followRepository.deleteAllInvolving(salvo);
         userBadgeRepository.deleteAllByUser(salvo);
         tasteProfileRepository.findById(salvo.getId()).ifPresent(tasteProfileRepository::delete);
@@ -230,11 +244,22 @@ public class AccountService {
                                 l.getReview().getUser().getUsername(), l.getCreatedAt()))
                         .toList(),
                 usernames(followRepository.findByFollowerOrderByCreatedAtDesc(u), true),
-                usernames(followRepository.findByFollowedOrderByCreatedAtDesc(u), false));
+                usernames(followRepository.findByFollowedOrderByCreatedAtDesc(u), false),
+                seriesReviewRepository.findByUserOrderByCreatedAtDesc(u).stream()
+                        .map(r -> new AccountExportDTO.SeriesDiaryEntry(serie(r.getSeries()), r.getSeasonNumber(),
+                                r.getWatchedOn(), r.getRating(), r.isLiked(), r.getText(), r.isSpoiler(), r.getCreatedAt()))
+                        .toList(),
+                seriesWatchlistRepository.findByUserOrderByAddedAtDesc(u).stream()
+                        .map(w -> new AccountExportDTO.SeriesWatchlistEntry(serie(w.getSeries()), w.getAddedAt()))
+                        .toList());
     }
 
     private static AccountExportDTO.Film filme(Movie m) {
         return new AccountExportDTO.Film(m.getTitle(), m.getReleaseYear(), m.getTmdbId());
+    }
+
+    private static AccountExportDTO.Show serie(Series s) {
+        return new AccountExportDTO.Show(s.getName(), s.getFirstAirYear(), s.getTmdbId());
     }
 
     private static List<String> usernames(List<Follow> follows, boolean seguidos) {

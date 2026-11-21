@@ -18,9 +18,14 @@ public record RetrospectiveDTO(
         List<RankedItem> topGenres,
         List<RankedItem> topActors,             // só atores que aparecem em 2+ filmes do mês
         List<Film> favorites,                   // melhores notas (curtida desempata)
-        List<Film> films                        // o mês inteiro, em ordem de quando assistiu
+        List<Film> films,                       // o mês inteiro, em ordem de quando assistiu
+        int seriesCount,                        // séries diferentes registradas no mês
+        List<SeriesEntry> series                // registros de séries, à parte dos filmes, em ordem de quando assistiu
 ) {
     public record RankedItem(String name, int count) {}
 
     public record Film(MovieDTO movie, Double rating, boolean liked, LocalDate watchedOn) {}
+
+    /** `seasonNumber` nulo = a série inteira */
+    public record SeriesEntry(SeriesDTO series, Integer seasonNumber, Double rating, boolean liked, LocalDate watchedOn) {}
 }

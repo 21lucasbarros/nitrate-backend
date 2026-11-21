@@ -89,6 +89,7 @@ public class SecurityConfig {
                                 new AuthorizationDecision(segredoAdminValido(contexto.getRequest())
                                         || contaAdmin(autenticacao.get())))
                         .requestMatchers(HttpMethod.GET, "/movies/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/series/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/people/**").permitAll()
                         .requestMatchers("/users/me", "/users/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/users/**").permitAll()

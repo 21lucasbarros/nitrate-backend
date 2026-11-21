@@ -19,7 +19,17 @@ public record AccountExportDTO(
         List<Comment> comments,
         List<ReviewLike> reviewLikes,
         List<String> following,
-        List<String> followers) {
+        List<String> followers,
+        List<SeriesDiaryEntry> seriesDiary,
+        List<SeriesWatchlistEntry> seriesWatchlist) {
+
+    public record Show(String name, Integer firstAirYear, Long tmdbId) {}
+
+    /** `season` nulo = a série inteira */
+    public record SeriesDiaryEntry(Show series, Integer season, LocalDate watchedOn, Double rating, boolean liked,
+                                   String review, boolean spoiler, Instant createdAt) {}
+
+    public record SeriesWatchlistEntry(Show series, Instant addedAt) {}
 
     public record Profile(String name, String username, String email, String bio,
                           String twitter, String instagram, Instant createdAt) {}

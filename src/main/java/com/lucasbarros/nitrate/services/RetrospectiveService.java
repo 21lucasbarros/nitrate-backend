@@ -10,6 +10,10 @@ import com.lucasbarros.nitrate.entities.MovieCast;
 import com.lucasbarros.nitrate.entities.Review;
 import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
+import com.lucasbarros.nitrate.repositories.SeriesReviewRepository;
+import com.lucasbarros.nitrate.dto.RetrospectiveDTO.SeriesEntry;
+import com.lucasbarros.nitrate.dto.SeriesDTO;
+import com.lucasbarros.nitrate.entities.SeriesReview;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +33,7 @@ public class RetrospectiveService {
     private static final int MIN_FILMES_ATOR_RECORRENTE = 2;
 
     @Autowired private ReviewRepository reviewRepository;
+    @Autowired private SeriesReviewRepository seriesReviewRepository;
 
     @Transactional(readOnly = true)
     public RetrospectiveDTO retrospectiva(User user, String mes) {
@@ -80,6 +85,16 @@ public class RetrospectiveService {
 
         Double media = comNota == 0 ? null : Math.round(somaNotas / comNota * 10) / 10.0;
 
+        // séries ficam à parte: não entram na contagem, na nota média nem nos rankings dos filmes
+        List<SeriesEntry> series = new ArrayList<>();
+        Set<Long> seriesDistintas = new HashSet<>();
+        for (SeriesReview review : seriesReviewRepository.findByUserAndWatchedOnBetweenOrderByWatchedOnAsc(
+                user, periodo.atDay(1), periodo.atEndOfMonth())) {
+            seriesDistintas.add(review.getSeries().getId());
+            series.add(new SeriesEntry(new SeriesDTO(review.getSeries()), review.getSeasonNumber(),
+                    review.getRating(), review.isLiked(), review.getWatchedOn()));
+        }
+
         return new RetrospectiveDTO(
                 user.getUsername(),
                 user.getName(),
@@ -93,14 +108,19 @@ public class RetrospectiveService {
                 ranking(porGenero, TOP_GENEROS, 1),
                 ranking(porAtor, TOP_ATORES, MIN_FILMES_ATOR_RECORRENTE),
                 favoritos(filmes),
-                filmes);
+                filmes,
+                seriesDistintas.size(),
+                series);
     }
 
-    /** meses em que a pessoa registrou algum filme, do mais recente para o mais antigo */
+    /** meses em que a pessoa registrou algum filme ou série, do mais recente para o mais antigo */
     @Transactional(readOnly = true)
     public List<String> mesesDisponiveis(User user) {
         SortedSet<YearMonth> meses = new TreeSet<>(Comparator.reverseOrder());
         for (LocalDate data : reviewRepository.findDatasAssistidas(user)) {
+            meses.add(YearMonth.from(data));
+        }
+        for (LocalDate data : seriesReviewRepository.findDatasAssistidas(user)) {
             meses.add(YearMonth.from(data));
         }
         List<String> resultado = new ArrayList<>();
