@@ -36,7 +36,7 @@ export TMDB_API_KEY="minha-chave-tmdb"
 export JWT_SECRET="uma-chave-secreta-com-pelo-menos-32-bytes"
 ```
 
-O banco configurado atualmente é um PostgreSQL hospedado na Neon. Para usar outro banco, altere `spring.datasource.url` no `application.yaml`.
+Para usar outro banco, altere `spring.datasource.url` no `application.yaml`.
 
 Durante o desenvolvimento, o Hibernate usa `ddl-auto: update` e atualiza as tabelas automaticamente. Não coloque senhas ou chaves no Git.
 
@@ -259,7 +259,7 @@ Todos os endpoints `/admin/**` exigem o header `Authorization: Bearer <segredo>`
 
 ### `GET|POST /admin/expand-graph`
 
-Expande o grafo a partir dos filmes curtidos ou bem avaliados que ainda estão pendentes: importa os filmes mais conhecidos do diretor e do elenco principal. Processa por até 90 segundos e informa quantos faltam, então pode ser chamado de novo até `sementesRestantes` chegar a zero. Na Vercel, um Cron Job chama esse endpoint uma vez por dia (veja `vercel.json`).
+Expande o grafo a partir dos filmes curtidos ou bem avaliados que ainda estão pendentes: importa os filmes mais conhecidos do diretor e do elenco principal. Processa por até 90 segundos e informa quantos faltam, então pode ser chamado de novo até `sementesRestantes` chegar a zero. Em produção, uma tarefa agendada chama esse endpoint uma vez por dia (veja [Tarefas agendadas](#tarefas-agendadas)).
 
 ```json
 { "sementesProcessadas": 3, "filmesNovos": 41, "sementesRestantes": 0 }
@@ -298,37 +298,50 @@ Principais códigos:
 
 ## CORS
 
-Por padrão a API aceita requisições de `http://localhost:3000`. Para outras origens, configure `cors.allowed-origins` (em produção, `CORS_ALLOWED_ORIGINS`) com uma lista separada por vírgulas. Curingas são aceitos, por exemplo `https://nitrate.vercel.app,https://nitrate-*.vercel.app`.
+Por padrão a API aceita requisições de `http://localhost:3000`. Para outras origens, configure `cors.allowed-origins` (em produção, `CORS_ALLOWED_ORIGINS`) com uma lista separada por vírgulas. Curingas são aceitos, por exemplo `https://nitrate.com.br,https://*.nitrate.com.br`.
 
-## Deploy na Vercel (Docker)
+## Deploy (VPS com Coolify)
 
-A Vercel constrói o `Dockerfile` da raiz com o [Container Runtime](https://vercel.com/docs/functions/runtimes/container) (beta). A imagem usa o perfil `prod` (`application-prod.yaml`), que lê toda a configuração de variáveis de ambiente. O `application.yaml` local nunca entra na imagem (`.dockerignore` e `.vercelignore`).
+A API está no ar em [api.nitrate.com.br](https://api.nitrate.com.br/health), numa VPS da Hostinger gerenciada pelo [Coolify](https://coolify.io). O front ([nitrate.com.br](https://nitrate.com.br)) roda na mesma VPS, também em Docker.
 
-1. Importe este repositório como um projeto novo na Vercel. Como não há outro framework, ela escolhe o preset **Container**.
-2. Em *Settings → Environment Variables*, configure:
+O Coolify constrói o `Dockerfile` da raiz. A imagem usa o perfil `prod` (`application-prod.yaml`), que lê toda a configuração de variáveis de ambiente. O `application.yaml` local nunca entra na imagem (`.dockerignore`).
+
+1. No Coolify, crie um recurso a partir deste repositório com o build pack **Dockerfile** e a porta `8080`.
+2. Aponte o domínio da API (ex.: `https://api.nitrate.com.br`) para o recurso; o Coolify emite o certificado HTTPS.
+3. Em *Environment Variables*, configure:
 
 | Variável               | Exemplo / observação                                                        |
 | ---------------------- | --------------------------------------------------------------------------- |
-| `PORT`                 | `8080` (obrigatória: sem ela a Vercel envia o tráfego para a porta 80)      |
-| `DATABASE_URL`         | `jdbc:postgresql://HOST.neon.tech/neondb?sslmode=require`                   |
+| `DATABASE_URL`         | `jdbc:postgresql://HOST:5432/nitrate`                                       |
 | `DB_USER`              | usuário do banco                                                            |
 | `DB_PASSWORD`          | senha do banco                                                              |
 | `TMDB_API_KEY`         | chave da API do TMDB                                                        |
 | `JWT_SECRET`           | segredo do JWT, com pelo menos 32 caracteres                                |
-| `CRON_SECRET`          | segredo do `/admin/**`; a Vercel o envia nos Cron Jobs                      |
-| `CORS_ALLOWED_ORIGINS` | domínio(s) do front, ex.: `https://nitrate.vercel.app`                      |
+| `CRON_SECRET`          | segredo do `/admin/**`, enviado pelas tarefas agendadas                     |
+| `CORS_ALLOWED_ORIGINS` | domínio(s) do front, ex.: `https://nitrate.com.br`                          |
 | `JWT_EXPIRATION_MS`    | opcional, padrão `86400000` (24h)                                           |
 | `RESEND_API_KEY`       | chave do [Resend](https://resend.com), para os e-mails de redefinir a senha |
 | `EMAIL_FROM`           | remetente de um domínio verificado no Resend, ex.: `Nitrate <nao-responda@seudominio.com>` |
-| `FRONTEND_URL`         | endereço do front, usado no link do e-mail, ex.: `https://nitrate.vercel.app` |
+| `FRONTEND_URL`         | endereço do front, usado no link do e-mail, ex.: `https://nitrate.com.br`   |
+| `PORT`                 | opcional, padrão `8080`                                                     |
 
-3. No projeto do front, configure `NEXT_PUBLIC_API_URL` com a URL do backend.
+4. No front, configure `NEXT_PUBLIC_API_URL` com a URL da API (é um argumento do build, então mudar o valor exige um build novo).
 
-Como a API roda como uma função, alguns pontos mudam em relação a um servidor tradicional:
+### Tarefas agendadas
 
-- **Desliga quando ociosa:** sem tráfego por 5 minutos (produção), a instância é desligada. A requisição seguinte espera a JVM e o Spring iniciarem.
-- **Várias instâncias:** cada uma tem o próprio grafo em memória, que é remontado a cada 10 minutos.
-- **Expansão do grafo:** a expansão disparada ao curtir um filme roda em segundo plano e pode ser interrompida quando a instância desliga. O cron diário em `/admin/expand-graph` termina o que ficou pendente.
+Os jobs diários são endpoints do `/admin/**` e precisam ser chamados de fora, com o `CRON_SECRET` (em *Scheduled Tasks* no Coolify ou no `crontab` da VPS):
+
+| Horário (UTC) | Endpoint                 |
+| ------------- | ------------------------ |
+| 06:00         | `/admin/expand-graph`    |
+| 07:00         | `/admin/release-dates`   |
+| 12:00         | `/admin/release-radar`   |
+
+```bash
+curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://api.nitrate.com.br/admin/expand-graph
+```
+
+Como a API roda como um processo contínuo, o grafo fica em memória e é remontado a cada 10 minutos, e a expansão disparada ao curtir um filme roda em segundo plano até o fim. O job diário de `/admin/expand-graph` só termina o que tiver ficado pendente (por exemplo, depois de um redeploy).
 
 Para testar a imagem localmente:
 

@@ -42,10 +42,10 @@ jwt:
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS}   # ex.: https://nitrate.vercel.app,https://nitrate-*.vercel.app
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}   # ex.: https://nitrate.com.br
 
 admin:
-  secret: ${CRON_SECRET}          # protege /admin/**; a Vercel envia nos Cron Jobs
+  secret: ${CRON_SECRET}          # protege /admin/**; enviado pelas tarefas agendadas
   emails: ${ADMIN_EMAILS:}        # contas que abrem o painel de admin no site, separadas por vírgula
   usernames: ${ADMIN_USERNAMES:21lucasbarros}  # idem, pelo @
 
@@ -57,4 +57,4 @@ email:
   from: ${EMAIL_FROM}
 
 app:
-  frontend-url: ${FRONTEND_URL}   # ex.: https://nitrate.vercel.app (vai no link do e-mail)
+  frontend-url: ${FRONTEND_URL}   # ex.: https://nitrate.com.br (vai no link do e-mail)
