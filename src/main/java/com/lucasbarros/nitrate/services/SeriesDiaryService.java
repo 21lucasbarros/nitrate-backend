@@ -14,6 +14,7 @@ import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,8 @@ import java.util.List;
 public class SeriesDiaryService {
 
     private static final int TEXTO_MAX = 20000;
+    private static final int FEED_MAX = 30;
+    private static final int RECENTES_MAX = 20;
 
     @Autowired private SeriesReviewRepository seriesReviewRepository;
     @Autowired private SeriesWatchlistRepository seriesWatchlistRepository;
@@ -75,6 +78,24 @@ public class SeriesDiaryService {
     @Transactional(readOnly = true)
     public List<SeriesReviewDTO> daSerie(Long seriesId) {
         return seriesReviewRepository.findBySeriesOrderByCreatedAtDesc(seriesService.buscar(seriesId)).stream()
+                .map(SeriesReviewDTO::new)
+                .toList();
+    }
+
+    /** o que as pessoas que eu sigo registraram de séries por último */
+    @Transactional(readOnly = true)
+    public List<SeriesReviewDTO> feed(User eu, int limite) {
+        int tamanho = Math.min(Math.max(1, limite), FEED_MAX);
+        return seriesReviewRepository.findFeed(eu, PageRequest.of(0, tamanho)).stream()
+                .map(SeriesReviewDTO::new)
+                .toList();
+    }
+
+    /** os registros de séries mais recentes de todo mundo (a home de quem ainda não segue ninguém) */
+    @Transactional(readOnly = true)
+    public List<SeriesReviewDTO> recentes(int limite) {
+        int tamanho = Math.min(Math.max(1, limite), RECENTES_MAX);
+        return seriesReviewRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, tamanho)).stream()
                 .map(SeriesReviewDTO::new)
                 .toList();
     }

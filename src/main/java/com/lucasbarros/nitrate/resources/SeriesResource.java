@@ -92,6 +92,12 @@ public class SeriesResource {
 
     // ---- registros (reviews de séries) ----
 
+    // literal: tem prioridade sobre /reviews/{reviewId}
+    @GetMapping("/reviews/recent")
+    public List<SeriesReviewDTO> recentes(@RequestParam(defaultValue = "12") int limit) {
+        return seriesDiaryService.recentes(limit);
+    }
+
     @GetMapping("/reviews/{reviewId}")
     public SeriesReviewDTO review(@PathVariable Long reviewId) {
         return seriesDiaryService.buscarPorId(reviewId);

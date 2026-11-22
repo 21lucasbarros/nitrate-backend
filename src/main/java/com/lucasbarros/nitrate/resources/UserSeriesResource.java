@@ -9,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -24,6 +25,13 @@ public class UserSeriesResource {
     public SeriesUserStateDTO estadoDaSerie(@AuthenticationPrincipal CustomUserDetails principal,
                                             @PathVariable Long seriesId) {
         return seriesDiaryService.estado(principal.getUser(), seriesId);
+    }
+
+    // o que as pessoas que eu sigo registraram de séries por último (a home junta com o feed de filmes)
+    @GetMapping("/me/series-feed")
+    public List<SeriesReviewDTO> feed(@AuthenticationPrincipal CustomUserDetails principal,
+                                      @RequestParam(defaultValue = "12") int limit) {
+        return seriesDiaryService.feed(principal.getUser(), limit);
     }
 
     @GetMapping("/{username}/series")

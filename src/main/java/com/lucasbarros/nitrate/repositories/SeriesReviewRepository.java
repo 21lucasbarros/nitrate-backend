@@ -3,6 +3,7 @@ package com.lucasbarros.nitrate.repositories;
 import com.lucasbarros.nitrate.entities.Series;
 import com.lucasbarros.nitrate.entities.SeriesReview;
 import com.lucasbarros.nitrate.entities.User;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,12 @@ public interface SeriesReviewRepository extends JpaRepository<SeriesReview, Long
     List<SeriesReview> findByUserOrderByCreatedAtDesc(User user);
     List<SeriesReview> findByUserAndSeriesOrderByWatchedOnDescCreatedAtDesc(User user, Series series);
     List<SeriesReview> findByUserAndWatchedOnBetweenOrderByWatchedOnAsc(User user, LocalDate inicio, LocalDate fim);
+    List<SeriesReview> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    // feed: o que as pessoas que `user` segue registraram por último, como o dos filmes
+    @Query("select r from SeriesReview r where r.user in " +
+            "(select f.followed from Follow f where f.follower = :user) " +
+            "order by r.createdAt desc, r.id desc")
+    List<SeriesReview> findFeed(@Param("user") User user, Pageable pageable);
 
     // Radar de Estreias: quem já registrou a série (ou uma temporada dela) e vai querer saber da próxima
     @Query("select distinct r.user from SeriesReview r where r.series = :series")
