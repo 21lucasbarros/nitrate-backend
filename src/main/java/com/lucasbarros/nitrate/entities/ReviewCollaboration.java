@@ -7,12 +7,14 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * Review em conjunto: quem registrou o filme marca com quem assistiu, e a pessoa marcada
- * aceita (ganhando a própria review do filme, ligada à de quem convidou) ou recusa.
- * Ao aceitar, ela escolhe entre escrever a dela ou usar a de quem convidou (`sharedText`).
+ * Review em conjunto: quem registrou o filme marca com quem assistiu (quantas pessoas quiser, um
+ * convite para cada), e cada pessoa marcada aceita (ganhando a própria review do filme, ligada à
+ * de quem convidou) ou recusa. Ao aceitar, ela escolhe entre escrever a dela ou usar a de quem
+ * convidou (`sharedText`). A sessão é a review de quem convidou com os convites aceitos dela.
  */
 @Entity
-@Table(name = "tb_review_collaboration")
+@Table(name = "tb_review_collaboration",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"author_review_id", "invitee_id"}))
 public class ReviewCollaboration implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -26,9 +28,9 @@ public class ReviewCollaboration implements Serializable {
     @JoinColumn(name = "author_id")
     private User author;
 
-    // a review de quem convidou: uma colaboração por review
-    @OneToOne(optional = false)
-    @JoinColumn(name = "author_review_id", unique = true)
+    // a review de quem convidou: um convite por pessoa marcada nela
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "author_review_id")
     private Review authorReview;
 
     @ManyToOne(optional = false)
@@ -62,17 +64,8 @@ public class ReviewCollaboration implements Serializable {
         this.invitee = invitee;
     }
 
-    /** a outra pessoa do par, do ponto de vista de quem é dono de `review` */
-    public User parceiroDe(Review review) {
-        return review.equals(authorReview) ? invitee : author;
-    }
-
-    /** a review da outra pessoa do par; nula se ela ainda não tem (convite pendente) */
-    public Review reviewParceiraDe(Review review) {
-        return review.equals(authorReview) ? inviteeReview : authorReview;
-    }
-
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     public User getAuthor() { return author; }
     public Review getAuthorReview() { return authorReview; }
     public User getInvitee() { return invitee; }

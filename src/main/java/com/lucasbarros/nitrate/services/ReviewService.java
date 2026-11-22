@@ -47,7 +47,7 @@ public class ReviewService {
                 .orElseThrow(() -> new ResourceNotFoundException("Filme não encontrado. Id: " + request.getMovieId()));
 
         Review review = registrar(user, filme, request);
-        collaborationService.definirConvite(user, review, request.getWatchedWith());
+        collaborationService.definirConvites(user, review, request.getWatchedWith());
         return new ReviewDTO(review);
     }
 
@@ -61,7 +61,7 @@ public class ReviewService {
         Review original = c.getAuthorReview();
         boolean compartilhada = request == null;
         ReviewRequestDTO dados = compartilhada ? copiaDe(original) : request;
-        dados.setWatchedWith(null); // o par já está definido pelo convite
+        dados.setWatchedWith(null); // a sessão já está definida pelo convite
 
         Review review = registrar(user, original.getMovie(), dados);
         collaborationService.concluirAceite(c, review, compartilhada);
@@ -139,7 +139,7 @@ public class ReviewService {
         Review review = buscarDoUsuario(user, id);
         aplicar(review, request);
         review.setUpdatedAt(Instant.now());
-        collaborationService.definirConvite(user, review, request.getWatchedWith());
+        collaborationService.definirConvites(user, review, request.getWatchedWith());
         collaborationService.aoAtualizar(review);
         expandirGrafoSeGostou(review);
         recommendationService.invalidar(user.getId());

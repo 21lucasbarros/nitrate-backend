@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -43,10 +45,16 @@ public class Review implements Serializable {
 
     private LocalDate watchedOn;
 
-    // review em conjunto: o mesmo registro aparece na review de quem convidou e na de quem aceitou
+    // review em conjunto, em quem aceitou um convite: o convite que liga esta review à de quem
+    // convidou (nula na review de quem convidou, que tem os convites em `invites`)
     @ManyToOne
     @JoinColumn(name = "collaboration_id")
     private ReviewCollaboration collaboration;
+
+    // review em conjunto, em quem convidou: um convite para cada pessoa marcada no "assisti com"
+    @OneToMany(mappedBy = "authorReview")
+    @OrderBy("id")
+    private List<ReviewCollaboration> invites = new ArrayList<>();
 
     private Instant createdAt = Instant.now();
 
@@ -89,6 +97,13 @@ public class Review implements Serializable {
 
     public ReviewCollaboration getCollaboration() { return collaboration; }
     public void setCollaboration(ReviewCollaboration collaboration) { this.collaboration = collaboration; }
+
+    public List<ReviewCollaboration> getInvites() { return invites; }
+
+    /** a review de quem convidou, que reúne a sessão em conjunto: esta mesma, se não entrou por convite */
+    public Review reviewDeOrigem() {
+        return collaboration == null ? this : collaboration.getAuthorReview();
+    }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

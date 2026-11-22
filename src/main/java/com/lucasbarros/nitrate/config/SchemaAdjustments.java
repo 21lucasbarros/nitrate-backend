@@ -85,5 +85,27 @@ public class SchemaAdjustments implements ApplicationRunner {
             jdbc.execute("alter table tb_notification drop constraint \"" + nome.replace("\"", "\"\"") + "\"");
             log.info("check {} removido de tb_notification (tipos novos de notificação)", nome);
         }
+
+        // a review em conjunto aceitava uma pessoa só: author_review_id era único. Agora cada
+        // review pode ter um convite por pessoa marcada (o unique novo é de author_review_id com invitee_id)
+        List<String> umConvitePorReview = jdbc.queryForList(
+                "select con.conname from pg_constraint con " +
+                "join pg_attribute a on a.attrelid = con.conrelid and a.attnum = any(con.conkey) " +
+                "where con.conrelid = to_regclass('tb_review_collaboration') and con.contype = 'u' " +
+                "group by con.conname having array_agg(a.attname::text) = array['author_review_id']",
+                String.class);
+        for (String nome : umConvitePorReview) {
+            jdbc.execute("alter table tb_review_collaboration drop constraint \"" + nome.replace("\"", "\"\"") + "\"");
+            log.info("restrição única {} removida de tb_review_collaboration (review em conjunto com várias pessoas)", nome);
+        }
+
+        // a review de quem convidou apontava para o convite em collaboration_id; agora só a de quem
+        // aceitou aponta (a de quem convidou chega aos convites por author_review_id)
+        if (!umConvitePorReview.isEmpty()) {
+            int desligadas = jdbc.update(
+                    "update tb_review r set collaboration_id = null from tb_review_collaboration c " +
+                    "where c.author_review_id = r.id and r.collaboration_id = c.id");
+            log.info("{} reviews de quem convidou desligadas do convite em collaboration_id", desligadas);
+        }
     }
 }

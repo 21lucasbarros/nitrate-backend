@@ -5,6 +5,8 @@ import com.lucasbarros.nitrate.entities.ReviewCollaboration;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ReviewDTO {
     private Long id;
@@ -20,13 +22,40 @@ public class ReviewDTO {
     private Together together;
 
     /**
-     * Review em conjunto, vista do lado do dono desta review: `partner` é a outra pessoa e
-     * `partnerReviewId` a review dela (nula enquanto o convite está pendente). `sharedText` = o
-     * texto desta review é o de `partner` (quem aceitou usou a review de quem convidou).
+     * Review em conjunto, vista do lado do dono desta review: `partners` são as outras pessoas da
+     * sessão, com a review de cada uma (nula enquanto o convite está pendente). Quem convidou vê
+     * os convites pendentes; quem aceitou vê quem convidou e quem mais aceitou. `invitedBy` é quem
+     * convidou (nulo para ele mesmo) e `sharedText` = o texto desta review é o de `invitedBy`.
      * Convites recusados não aparecem.
      */
-    public record Together(UserSummaryDTO partner, Long partnerReviewId, ReviewCollaboration.Status status,
-                           boolean invitedByMe, boolean sharedText) {
+    public record Together(List<Partner> partners, boolean invitedByMe, UserSummaryDTO invitedBy,
+                           boolean sharedText) {
+
+        static Together de(Review review) {
+            ReviewCollaboration recebido = review.getCollaboration();
+            List<Partner> parceiros = new ArrayList<>();
+            if (recebido == null) {
+                for (ReviewCollaboration c : review.getInvites()) {
+                    if (c.getStatus() != ReviewCollaboration.Status.DECLINED) parceiros.add(new Partner(c));
+                }
+                return parceiros.isEmpty() ? null : new Together(parceiros, true, null, false);
+            }
+            Review origem = recebido.getAuthorReview();
+            parceiros.add(new Partner(new UserSummaryDTO(origem.getUser()), origem.getId(),
+                    ReviewCollaboration.Status.ACCEPTED));
+            for (ReviewCollaboration c : origem.getInvites()) {
+                if (!c.equals(recebido) && c.getStatus() == ReviewCollaboration.Status.ACCEPTED) parceiros.add(new Partner(c));
+            }
+            return new Together(parceiros, false, new UserSummaryDTO(origem.getUser()), recebido.isSharedText());
+        }
+    }
+
+    // uma pessoa da sessão em conjunto; `reviewId` nulo enquanto o convite dela está pendente
+    public record Partner(UserSummaryDTO user, Long reviewId, ReviewCollaboration.Status status) {
+        Partner(ReviewCollaboration c) {
+            this(new UserSummaryDTO(c.getInvitee()),
+                    c.getInviteeReview() == null ? null : c.getInviteeReview().getId(), c.getStatus());
+        }
     }
 
     public ReviewDTO(Review entity) {
@@ -40,14 +69,7 @@ public class ReviewDTO {
         rewatch = entity.isRewatch();
         watchedOn = entity.getWatchedOn();
         createdAt = entity.getCreatedAt();
-        ReviewCollaboration c = entity.getCollaboration();
-        if (c != null && c.getStatus() != ReviewCollaboration.Status.DECLINED) {
-            Review parceira = c.reviewParceiraDe(entity);
-            boolean convidei = entity.equals(c.getAuthorReview());
-            together = new Together(new UserSummaryDTO(c.parceiroDe(entity)),
-                    parceira == null ? null : parceira.getId(), c.getStatus(), convidei,
-                    !convidei && c.isSharedText());
-        }
+        together = Together.de(entity);
     }
 
     public Long getId() { return id; }
