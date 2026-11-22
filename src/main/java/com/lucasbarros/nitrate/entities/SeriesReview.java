@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
 
-/** Registro de uma série no diário: a série inteira (seasonNumber nulo) ou uma temporada. */
+/** Registro de uma série no diário: a série inteira (seasonNumber nulo), uma temporada ou um episódio dela. */
 @Entity
 @Table(name = "tb_series_review")
 public class SeriesReview implements Serializable {
@@ -27,6 +27,9 @@ public class SeriesReview implements Serializable {
 
     // nulo = a série como um todo; 0 = especiais, como no TMDB
     private Integer seasonNumber;
+
+    // nulo = a temporada inteira (ou a série); com número, um episódio da temporada em seasonNumber
+    private Integer episodeNumber;
 
     // de 0.5 a 5, em passos de 0.5. null = assistiu mas não deu nota
     private Double rating;
@@ -64,6 +67,9 @@ public class SeriesReview implements Serializable {
 
     public Integer getSeasonNumber() { return seasonNumber; }
     public void setSeasonNumber(Integer seasonNumber) { this.seasonNumber = seasonNumber; }
+
+    public Integer getEpisodeNumber() { return episodeNumber; }
+    public void setEpisodeNumber(Integer episodeNumber) { this.episodeNumber = episodeNumber; }
 
     public Double getRating() { return rating; }
     public void setRating(Double rating) { this.rating = rating; }

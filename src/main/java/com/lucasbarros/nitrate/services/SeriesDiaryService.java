@@ -21,7 +21,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-/** O diário de séries: registros (da série inteira ou de uma temporada) e a watchlist de séries. */
+/** O diário de séries: registros (da série inteira, de uma temporada ou de um episódio) e a watchlist de séries. */
 @Service
 public class SeriesDiaryService {
 
@@ -140,6 +140,14 @@ public class SeriesDiaryService {
             throw new IllegalArgumentException("Temporada inválida: " + temporada);
         }
 
+        Integer episodio = request.episodeNumber();
+        if (episodio != null && temporada == null) {
+            throw new IllegalArgumentException("Informe a temporada do episódio (seasonNumber)");
+        }
+        if (episodio != null && episodio < 1) {
+            throw new IllegalArgumentException("Episódio inválido: " + episodio);
+        }
+
         String texto = request.text() == null ? null : request.text().trim();
         if (texto != null && texto.isEmpty()) texto = null;
         if (texto != null && texto.length() > TEXTO_MAX) {
@@ -152,6 +160,7 @@ public class SeriesDiaryService {
         }
 
         review.setSeasonNumber(temporada);
+        review.setEpisodeNumber(episodio);
         review.setRating(nota);
         review.setText(texto);
         review.setLiked(request.liked());

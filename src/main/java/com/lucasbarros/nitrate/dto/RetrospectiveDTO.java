@@ -26,6 +26,7 @@ public record RetrospectiveDTO(
 
     public record Film(MovieDTO movie, Double rating, boolean liked, LocalDate watchedOn) {}
 
-    /** `seasonNumber` nulo = a série inteira */
-    public record SeriesEntry(SeriesDTO series, Integer seasonNumber, Double rating, boolean liked, LocalDate watchedOn) {}
+    /** `seasonNumber` nulo = a série inteira; `episodeNumber` nulo = a temporada inteira */
+    public record SeriesEntry(SeriesDTO series, Integer seasonNumber, Integer episodeNumber, Double rating, boolean liked,
+                              LocalDate watchedOn) {}
 }

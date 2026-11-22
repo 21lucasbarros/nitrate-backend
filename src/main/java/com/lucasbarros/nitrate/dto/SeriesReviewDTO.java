@@ -10,6 +10,7 @@ public record SeriesReviewDTO(
         SeriesDTO series,
         UserSummaryDTO user,
         Integer seasonNumber, // nulo = a série inteira
+        Integer episodeNumber, // nulo = a temporada inteira
         Double rating,
         String text,
         boolean liked,
@@ -19,6 +20,7 @@ public record SeriesReviewDTO(
 
     public SeriesReviewDTO(SeriesReview r) {
         this(r.getId(), new SeriesDTO(r.getSeries()), new UserSummaryDTO(r.getUser()), r.getSeasonNumber(),
-                r.getRating(), r.getText(), r.isLiked(), r.isSpoiler(), r.getWatchedOn(), r.getCreatedAt());
+                r.getEpisodeNumber(), r.getRating(), r.getText(), r.isLiked(), r.isSpoiler(), r.getWatchedOn(),
+                r.getCreatedAt());
     }
 }

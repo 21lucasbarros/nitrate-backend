@@ -26,7 +26,7 @@ public record AccountExportDTO(
     public record Show(String name, Integer firstAirYear, Long tmdbId) {}
 
     /** `season` nulo = a série inteira */
-    public record SeriesDiaryEntry(Show series, Integer season, LocalDate watchedOn, Double rating, boolean liked,
+    public record SeriesDiaryEntry(Show series, Integer season, Integer episode, LocalDate watchedOn, Double rating, boolean liked,
                                    String review, boolean spoiler, Instant createdAt) {}
 
     public record SeriesWatchlistEntry(Show series, Instant addedAt) {}

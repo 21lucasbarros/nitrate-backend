@@ -92,7 +92,7 @@ public class RetrospectiveService {
                 user, periodo.atDay(1), periodo.atEndOfMonth())) {
             seriesDistintas.add(review.getSeries().getId());
             series.add(new SeriesEntry(new SeriesDTO(review.getSeries()), review.getSeasonNumber(),
-                    review.getRating(), review.isLiked(), review.getWatchedOn()));
+                    review.getEpisodeNumber(), review.getRating(), review.isLiked(), review.getWatchedOn()));
         }
 
         return new RetrospectiveDTO(

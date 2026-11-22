@@ -33,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
@@ -296,15 +297,17 @@ public class SeriesService {
     }
 
     /**
-     * Como a série foi recebida no Nitrate. Cada pessoa conta uma vez: vale o registro mais
-     * recente da série inteira; quem só registrou temporadas conta pela temporada mais recente.
+     * Como a série foi recebida no Nitrate. Cada pessoa conta uma vez: a nota é a do registro mais
+     * recente da série inteira; sem ele, a média das temporadas (a nota mais recente de cada uma).
+     * Nota de episódio não entra: ela diz o que a pessoa achou do episódio, não da série. Quem só
+     * registrou episódios conta em "assistiu" e na curtida, mas não na nota.
      */
     @Transactional(readOnly = true)
     public MovieStatsDTO estatisticas(Long id) {
         Series serie = buscar(id);
-        Map<Long, SeriesReview> porPessoa = new HashMap<>();
+        Map<Long, List<SeriesReview>> porPessoa = new HashMap<>();
         for (SeriesReview review : seriesReviewRepository.findBySeriesOrderByCreatedAtDesc(serie)) {
-            porPessoa.merge(review.getUser().getId(), review, (atual, outra) -> preferida(outra, atual) ? outra : atual);
+            porPessoa.computeIfAbsent(review.getUser().getId(), k -> new ArrayList<>()).add(review);
         }
 
         Map<String, Integer> distribuicao = new LinkedHashMap<>();
@@ -312,27 +315,39 @@ public class SeriesService {
         int comNota = 0;
         int curtidas = 0;
         double soma = 0;
-        for (SeriesReview review : porPessoa.values()) {
-            if (review.isLiked()) curtidas++;
-            if (review.getRating() != null) {
+        for (List<SeriesReview> registros : porPessoa.values()) {
+            if (registros.stream().anyMatch(SeriesReview::isLiked)) curtidas++;
+            Double nota = notaDaSerie(registros);
+            if (nota != null) {
                 comNota++;
-                soma += review.getRating();
-                distribuicao.merge(String.valueOf(review.getRating()), 1, Integer::sum);
+                soma += nota;
+                distribuicao.merge(String.valueOf(nota), 1, Integer::sum);
             }
         }
         Double media = comNota == 0 ? null : Math.round(soma / comNota * 10) / 10.0;
         return new MovieStatsDTO(media, comNota, porPessoa.size(), curtidas, distribuicao);
     }
 
-    // a série inteira vale mais que uma temporada; entre iguais, a mais recente
-    private static boolean preferida(SeriesReview a, SeriesReview b) {
-        boolean aInteira = a.getSeasonNumber() == null;
-        boolean bInteira = b.getSeasonNumber() == null;
-        if (aInteira != bInteira) return aInteira;
-        int porData = Comparator.nullsFirst(Comparator.<LocalDate>naturalOrder())
-                .compare(a.getWatchedOn(), b.getWatchedOn());
-        return porData != 0 ? porData > 0 : a.getCreatedAt().isAfter(b.getCreatedAt());
+    // a nota que a pessoa deu para a série; a média das temporadas é arredondada para o meio ponto
+    private static Double notaDaSerie(List<SeriesReview> registros) {
+        Optional<SeriesReview> inteira = registros.stream()
+                .filter(r -> r.getSeasonNumber() == null && r.getRating() != null)
+                .max(MAIS_RECENTE);
+        if (inteira.isPresent()) return inteira.get().getRating();
+
+        Map<Integer, SeriesReview> porTemporada = new HashMap<>();
+        for (SeriesReview r : registros) {
+            if (r.getSeasonNumber() == null || r.getEpisodeNumber() != null || r.getRating() == null) continue;
+            porTemporada.merge(r.getSeasonNumber(), r, (a, b) -> MAIS_RECENTE.compare(a, b) >= 0 ? a : b);
+        }
+        if (porTemporada.isEmpty()) return null;
+        double media = porTemporada.values().stream().mapToDouble(SeriesReview::getRating).average().orElseThrow();
+        return Math.round(media * 2) / 2.0;
     }
+
+    private static final Comparator<SeriesReview> MAIS_RECENTE =
+            Comparator.comparing(SeriesReview::getWatchedOn, Comparator.nullsFirst(Comparator.<LocalDate>naturalOrder()))
+                    .thenComparing(SeriesReview::getCreatedAt);
 
     Series buscar(Long id) {
         return seriesRepository.findById(id)

@@ -308,7 +308,7 @@ public class AccountService {
                 usernames(followRepository.findByFollowedOrderByCreatedAtDesc(u), false),
                 seriesReviewRepository.findByUserOrderByCreatedAtDesc(u).stream()
                         .map(r -> new AccountExportDTO.SeriesDiaryEntry(serie(r.getSeries()), r.getSeasonNumber(),
-                                r.getWatchedOn(), r.getRating(), r.isLiked(), r.getText(), r.isSpoiler(), r.getCreatedAt()))
+                                r.getEpisodeNumber(), r.getWatchedOn(), r.getRating(), r.isLiked(), r.getText(), r.isSpoiler(), r.getCreatedAt()))
                         .toList(),
                 seriesWatchlistRepository.findByUserOrderByAddedAtDesc(u).stream()
                         .map(w -> new AccountExportDTO.SeriesWatchlistEntry(serie(w.getSeries()), w.getAddedAt()))
