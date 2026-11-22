@@ -1,11 +1,14 @@
 package com.lucasbarros.nitrate.resources;
 
+import com.lucasbarros.nitrate.dto.CollaborationAcceptDTO;
+import com.lucasbarros.nitrate.dto.CollaborationDTO;
 import com.lucasbarros.nitrate.dto.ReviewCommentDTO;
 import com.lucasbarros.nitrate.dto.ReviewCommentRequestDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
 import com.lucasbarros.nitrate.dto.ReviewEngagementDTO;
 import com.lucasbarros.nitrate.dto.ReviewRequestDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
+import com.lucasbarros.nitrate.services.ReviewCollaborationService;
 import com.lucasbarros.nitrate.services.ReviewService;
 import com.lucasbarros.nitrate.services.ReviewSocialService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +28,9 @@ public class ReviewResource {
 
     @Autowired
     private ReviewSocialService reviewSocialService;
+
+    @Autowired
+    private ReviewCollaborationService collaborationService;
 
     @GetMapping("/recent")
     public List<ReviewDTO> recentes(@RequestParam(defaultValue = "20") int limit) {
@@ -89,6 +95,28 @@ public class ReviewResource {
                                                   @PathVariable Long id,
                                                   @PathVariable Long commentId) {
         reviewSocialService.excluirComentario(principal.getUser(), id, commentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // review em conjunto: o convite que chega pelo sino para quem foi marcado no "assisti com"
+    @GetMapping("/invites/{id}")
+    public CollaborationDTO convite(@AuthenticationPrincipal CustomUserDetails principal, @PathVariable Long id) {
+        return collaborationService.buscar(principal.getUser(), id);
+    }
+
+    // sem `review` no corpo, quem aceita fica com a review de quem convidou
+    @PostMapping("/invites/{id}/accept")
+    public ResponseEntity<ReviewDTO> aceitarConvite(@AuthenticationPrincipal CustomUserDetails principal,
+                                                    @PathVariable Long id,
+                                                    @RequestBody(required = false) CollaborationAcceptDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.aceitarColaboracao(
+                principal.getUser(), id, request == null ? null : request.review()));
+    }
+
+    @PostMapping("/invites/{id}/decline")
+    public ResponseEntity<Void> recusarConvite(@AuthenticationPrincipal CustomUserDetails principal,
+                                               @PathVariable Long id) {
+        collaborationService.recusar(principal.getUser(), id);
         return ResponseEntity.noContent().build();
     }
 

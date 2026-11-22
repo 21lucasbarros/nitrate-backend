@@ -8,7 +8,8 @@ import java.util.Objects;
 
 /**
  * Aviso para a pessoa: um filme da watchlist chegou aos cinemas ou ao streaming, uma série
- * estreou ou ganhou temporada nova (Radar de Estreias), ou alguém começou a seguir ela.
+ * estreou ou ganhou temporada nova (Radar de Estreias), alguém começou a seguir ela, ou alguém
+ * marcou que assistiu um filme com ela (convite de review em conjunto) e aceitou o convite dela.
  */
 @Entity
 @Table(name = "tb_notification",
@@ -19,7 +20,7 @@ import java.util.Objects;
 public class Notification implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public enum Type { CINEMA, STREAMING, FOLLOW, SERIES_PREMIERE, SERIES_SEASON }
+    public enum Type { CINEMA, STREAMING, FOLLOW, SERIES_PREMIERE, SERIES_SEASON, COLLAB_INVITE, COLLAB_ACCEPTED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,7 +43,13 @@ public class Notification implements Serializable {
     // em SERIES_SEASON, a temporada que estreou
     private Integer seasonNumber;
 
-    // quem fez a ação (em FOLLOW, quem começou a seguir); nulo nas estreias
+    // em COLLAB_INVITE e COLLAB_ACCEPTED; o filme vem da review de quem convidou (movie_id fica
+    // nulo para não esbarrar na unicidade de (user, movie, type) ao assistir junto de novo)
+    @ManyToOne
+    @JoinColumn(name = "collaboration_id")
+    private ReviewCollaboration collaboration;
+
+    // quem fez a ação (em FOLLOW, quem começou a seguir; nos convites, quem convidou ou aceitou); nulo nas estreias
     @ManyToOne
     @JoinColumn(name = "actor_id")
     private User actor;
@@ -94,16 +101,36 @@ public class Notification implements Serializable {
         return n;
     }
 
+    public static Notification conviteDeReview(ReviewCollaboration c) {
+        Notification n = new Notification();
+        n.user = c.getInvitee();
+        n.actor = c.getAuthor();
+        n.collaboration = c;
+        n.type = Type.COLLAB_INVITE;
+        return n;
+    }
+
+    public static Notification conviteAceito(ReviewCollaboration c) {
+        Notification n = new Notification();
+        n.user = c.getAuthor();
+        n.actor = c.getInvitee();
+        n.collaboration = c;
+        n.type = Type.COLLAB_ACCEPTED;
+        return n;
+    }
+
     public Long getId() { return id; }
     public User getUser() { return user; }
     public Movie getMovie() { return movie; }
     public Series getSeries() { return series; }
     public Integer getSeasonNumber() { return seasonNumber; }
+    public ReviewCollaboration getCollaboration() { return collaboration; }
     public User getActor() { return actor; }
     public Type getType() { return type; }
     public String getDetail() { return detail; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getReadAt() { return readAt; }
+    public void setReadAt(Instant readAt) { this.readAt = readAt; }
 
     @Override
     public boolean equals(Object o) {

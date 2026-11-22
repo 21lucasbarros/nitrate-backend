@@ -43,6 +43,11 @@ public class Review implements Serializable {
 
     private LocalDate watchedOn;
 
+    // review em conjunto: o mesmo registro aparece na review de quem convidou e na de quem aceitou
+    @ManyToOne
+    @JoinColumn(name = "collaboration_id")
+    private ReviewCollaboration collaboration;
+
     private Instant createdAt = Instant.now();
 
     private Instant updatedAt = Instant.now();
@@ -81,6 +86,9 @@ public class Review implements Serializable {
 
     public LocalDate getWatchedOn() { return watchedOn; }
     public void setWatchedOn(LocalDate watchedOn) { this.watchedOn = watchedOn; }
+
+    public ReviewCollaboration getCollaboration() { return collaboration; }
+    public void setCollaboration(ReviewCollaboration collaboration) { this.collaboration = collaboration; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

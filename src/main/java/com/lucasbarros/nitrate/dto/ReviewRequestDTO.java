@@ -10,6 +10,9 @@ public class ReviewRequestDTO {
     private boolean spoiler;
     private boolean rewatch;
     private LocalDate watchedOn;
+    // review em conjunto: o username de quem assistiu junto. nulo = não muda (na criação, ninguém);
+    // vazio = desfaz o convite que ainda não foi aceito
+    private String watchedWith;
 
     public Long getMovieId() { return movieId; }
     public void setMovieId(Long movieId) { this.movieId = movieId; }
@@ -25,4 +28,6 @@ public class ReviewRequestDTO {
     public void setSpoiler(boolean spoiler) { this.spoiler = spoiler; }
     public LocalDate getWatchedOn() { return watchedOn; }
     public void setWatchedOn(LocalDate watchedOn) { this.watchedOn = watchedOn; }
+    public String getWatchedWith() { return watchedWith; }
+    public void setWatchedWith(String watchedWith) { this.watchedWith = watchedWith; }
 }

@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.dto.ReviewDTO;
 import com.lucasbarros.nitrate.dto.ReviewRequestDTO;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.Review;
+import com.lucasbarros.nitrate.entities.ReviewCollaboration;
 import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
@@ -35,6 +36,7 @@ public class ReviewService {
     @Autowired private ReviewSocialService reviewSocialService;
     @Autowired private RecommendationService recommendationService;
     @Autowired private AchievementService achievementService;
+    @Autowired private ReviewCollaborationService collaborationService;
 
     @Transactional
     public ReviewDTO criar(User user, ReviewRequestDTO request) {
@@ -44,6 +46,40 @@ public class ReviewService {
         Movie filme = movieRepository.findById(request.getMovieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Filme não encontrado. Id: " + request.getMovieId()));
 
+        Review review = registrar(user, filme, request);
+        collaborationService.definirConvite(user, review, request.getWatchedWith());
+        return new ReviewDTO(review);
+    }
+
+    /**
+     * Aceita o convite de review em conjunto: com `request`, quem foi convidado escreve a própria
+     * review; sem, a review de quem convidou é copiada para ele (nota, curtida, texto e data).
+     */
+    @Transactional
+    public ReviewDTO aceitarColaboracao(User user, Long collaborationId, ReviewRequestDTO request) {
+        ReviewCollaboration c = collaborationService.paraResponder(user, collaborationId);
+        Review original = c.getAuthorReview();
+        boolean compartilhada = request == null;
+        ReviewRequestDTO dados = compartilhada ? copiaDe(original) : request;
+        dados.setWatchedWith(null); // o par já está definido pelo convite
+
+        Review review = registrar(user, original.getMovie(), dados);
+        collaborationService.concluirAceite(c, review, compartilhada);
+        return new ReviewDTO(review);
+    }
+
+    private static ReviewRequestDTO copiaDe(Review original) {
+        ReviewRequestDTO dados = new ReviewRequestDTO();
+        dados.setRating(original.getRating());
+        dados.setText(original.getText());
+        dados.setLiked(original.isLiked());
+        dados.setSpoiler(original.isSpoiler());
+        dados.setWatchedOn(original.getWatchedOn());
+        return dados;
+    }
+
+    // o registro em si: salva, tira da watchlist e atualiza grafo, recomendações e conquistas
+    private Review registrar(User user, Movie filme, ReviewRequestDTO request) {
         boolean jaAssistiu = reviewRepository.existsByUserAndMovie(user, filme);
 
         Review review = new Review(user, filme);
@@ -57,7 +93,7 @@ public class ReviewService {
         expandirGrafoSeGostou(review);
         recommendationService.invalidar(user.getId());
         conferirConquistasDepoisDoCommit(user.getId(), filme.getId());
-        return new ReviewDTO(review);
+        return review;
     }
 
     // a conferência roda em outra thread: antes do commit ela ainda não veria a review nova
@@ -103,6 +139,8 @@ public class ReviewService {
         Review review = buscarDoUsuario(user, id);
         aplicar(review, request);
         review.setUpdatedAt(Instant.now());
+        collaborationService.definirConvite(user, review, request.getWatchedWith());
+        collaborationService.aoAtualizar(review);
         expandirGrafoSeGostou(review);
         recommendationService.invalidar(user.getId());
         return new ReviewDTO(review);
@@ -112,6 +150,7 @@ public class ReviewService {
     public void deletar(User user, Long id) {
         Review review = buscarDoUsuario(user, id);
         reviewSocialService.limparReview(review);
+        collaborationService.aoApagar(review);
         reviewRepository.delete(review);
         recommendationService.invalidar(user.getId());
     }
