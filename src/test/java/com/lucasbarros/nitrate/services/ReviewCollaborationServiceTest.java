@@ -105,6 +105,14 @@ class ReviewCollaborationServiceTest {
     }
 
     @Test
+    void marcaAteQuinzePessoas() {
+        List<String> dezesseis = java.util.stream.IntStream.rangeClosed(1, 16).mapToObj(i -> "pessoa" + i).toList();
+        assertThrows(IllegalArgumentException.class, () -> service.definirConvites(ana, daAna, dezesseis));
+        assertTrue(daAna.getInvites().isEmpty());
+        verify(userRepository, never()).findFirstByUsernameIgnoreCase("pessoa1");
+    }
+
+    @Test
     void naoMarcaASiMesmo() {
         assertThrows(IllegalArgumentException.class, () -> service.definirConvites(ana, daAna, List.of("ana")));
     }

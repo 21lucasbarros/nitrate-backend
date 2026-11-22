@@ -13,7 +13,7 @@ public class ReviewRequestDTO {
     private boolean spoiler;
     private boolean rewatch;
     private LocalDate watchedOn;
-    // review em conjunto: os usernames de todo mundo que assistiu junto, sem limite. nulo = não muda
+    // review em conjunto: os usernames de todo mundo que assistiu junto, até 15. nulo = não muda
     // (na criação, ninguém); quem sai da lista com o convite ainda não aceito tem o convite desfeito.
     // Um texto só também vale (o formato antigo, de uma pessoa; vazio = ninguém)
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)

@@ -27,12 +27,15 @@ import java.util.Set;
 
 /**
  * Review em conjunto ("assisti com"): os convites que saem da review de quem registrou (um por
- * pessoa marcada, sem limite), a resposta de cada pessoa e o que acontece com a sessão quando uma
+ * pessoa marcada, até MAX_PESSOAS), a resposta de cada pessoa e o que acontece com a sessão quando uma
  * das reviews muda ou é apagada. Criar a review de quem aceita fica no ReviewService, que chama
  * este serviço para validar e ligar.
  */
 @Service
 public class ReviewCollaborationService {
+
+    /** quantas pessoas cabem no "assisti com", sem contar quem registrou */
+    public static final int MAX_PESSOAS = 15;
 
     @Autowired private ReviewCollaborationRepository collaborationRepository;
     @Autowired private NotificationRepository notificationRepository;
@@ -52,6 +55,10 @@ public class ReviewCollaborationService {
         for (String u : usernames) {
             String nome = u == null ? "" : u.trim().replaceFirst("^@", "").toLowerCase(Locale.ROOT);
             if (!nome.isEmpty()) nomes.add(nome);
+        }
+        // a lista é a sessão inteira (quem já aceitou precisa estar nela), então o tamanho dela é o total
+        if (nomes.size() > MAX_PESSOAS) {
+            throw new IllegalArgumentException("Dá para marcar até " + MAX_PESSOAS + " pessoas numa review em conjunto.");
         }
 
         // quem entrou por convite não marca mais ninguém: a sessão é de quem convidou
