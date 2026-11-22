@@ -29,8 +29,8 @@ import java.util.regex.Pattern;
 public class AuthService {
 
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9_]{3,20}$");
-    // nomes que são rotas de /users/... e não podem virar perfil
-    private static final Set<String> USERNAMES_RESERVADOS = Set.of("me", "search");
+    // nomes que são rotas de /users/... e não podem virar perfil, e o da conta das listas oficiais
+    private static final Set<String> USERNAMES_RESERVADOS = Set.of("me", "search", NitrateAccountService.USERNAME);
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final int NOME_MAX = 60; // igual ao AccountService
     private static final int EMAIL_MAX = 254;
@@ -69,7 +69,8 @@ public class AuthService {
                     "Confirme que tem pelo menos " + IDADE_MINIMA + " anos e aceite os Termos de Uso e a Política de Privacidade.");
         }
 
-        if (userRepository.existsByEmailIgnoreCase(email)) {
+        // o e-mail da conta das listas oficiais fica reservado, mesmo antes de ela existir
+        if (userRepository.existsByEmailIgnoreCase(email) || email.equals(NitrateAccountService.EMAIL)) {
             throw new EmailJaCadastradoException(email);
         }
 

@@ -18,6 +18,10 @@ public interface MovieListRepository extends JpaRepository<MovieList, Long> {
     List<MovieList> findByUserAndPublicListTrueOrderByUpdatedAtDesc(User user);
     Optional<MovieList> findByUserAndSlug(User user, String slug);
     List<MovieList> findBySlugIsNull();
+    // home: listas públicas (e não vazias) de quem eu sigo, das atualizadas por último
+    @Query("select l from MovieList l where l.publicList = true and l.entries is not empty and l.user in " +
+            "(select f.followed from Follow f where f.follower = :me) order by l.updatedAt desc, l.id desc")
+    List<MovieList> findDosAmigos(@Param("me") User me, Pageable pageable);
 
     @Query("select l.slug from MovieList l where l.user = :user and l.slug is not null and l.id <> :exceto")
     List<String> slugsDoUsuario(@Param("user") User user, @Param("exceto") Long exceto);

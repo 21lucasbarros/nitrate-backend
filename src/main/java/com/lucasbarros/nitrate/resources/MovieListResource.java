@@ -33,6 +33,12 @@ public class MovieListResource {
         return listSocialService.populares(limit, principal == null ? null : principal.getUser());
     }
 
+    // rota pública: as listas do Nitrate (home), feitas pelo admin; literal, tem prioridade sobre /{id}
+    @GetMapping("/official")
+    public List<MovieListDTO> oficiais(@AuthenticationPrincipal CustomUserDetails principal) {
+        return movieListService.oficiais(principal == null ? null : principal.getUser());
+    }
+
     // rota pública: listas privadas só aparecem para quem as criou
     @GetMapping("/{id}")
     public MovieListDTO buscar(@AuthenticationPrincipal CustomUserDetails principal, @PathVariable Long id) {

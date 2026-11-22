@@ -6,18 +6,21 @@ import com.lucasbarros.nitrate.dto.MovieListRequestDTO;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.MovieList;
 import com.lucasbarros.nitrate.entities.MovieListEntry;
+import com.lucasbarros.nitrate.entities.Series;
 import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.repositories.ListCommentRepository;
 import com.lucasbarros.nitrate.repositories.ListLikeRepository;
 import com.lucasbarros.nitrate.repositories.ListSaveRepository;
 import com.lucasbarros.nitrate.repositories.MovieListRepository;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
+import com.lucasbarros.nitrate.repositories.SeriesRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Service;
@@ -45,14 +48,17 @@ public class MovieListService implements ApplicationRunner {
     public static final int NOME_MAX = 100;
     public static final int DESCRICAO_MAX = 2000;
     public static final int FILMES_MAX = 500;
+    private static final int AMIGOS_MAX = 12;
     private static final int SLUG_MAX = 80;
 
     @Autowired private MovieListRepository movieListRepository;
     @Autowired private MovieRepository movieRepository;
+    @Autowired private SeriesRepository seriesRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private ListLikeRepository listLikeRepository;
     @Autowired private ListCommentRepository listCommentRepository;
     @Autowired private ListSaveRepository listSaveRepository;
+    @Autowired private NitrateAccountService nitrateAccountService;
 
     /** as listas do perfil: quem vê o próprio perfil vê também as privadas */
     @Transactional(readOnly = true)
@@ -63,6 +69,22 @@ public class MovieListService implements ApplicationRunner {
                 ? movieListRepository.findByUserOrderByUpdatedAtDesc(dono)
                 : movieListRepository.findByUserAndPublicListTrueOrderByUpdatedAtDesc(dono);
         return resumos(listas, quemVe);
+    }
+
+    /** as listas públicas do Nitrate (home), da atualizada mais recentemente para a mais antiga */
+    @Transactional(readOnly = true)
+    public List<MovieListDTO> oficiais(User quemVe) {
+        // sem a conta (o admin ainda não criou nenhuma), não há lista oficial
+        return nitrateAccountService.existente()
+                .map(conta -> resumos(movieListRepository.findByUserAndPublicListTrueOrderByUpdatedAtDesc(conta), quemVe))
+                .orElse(List.of());
+    }
+
+    /** home: as listas públicas de quem eu sigo, das atualizadas por último */
+    @Transactional(readOnly = true)
+    public List<MovieListDTO> listasDosAmigos(User eu, int limite) {
+        int tamanho = Math.min(Math.max(1, limite), AMIGOS_MAX);
+        return resumos(movieListRepository.findDosAmigos(eu, PageRequest.of(0, tamanho)), eu);
     }
 
     /** minhas listas; com `movieId`, cada uma diz se já tem o filme (para o "adicionar à lista") */
@@ -96,7 +118,7 @@ public class MovieListService implements ApplicationRunner {
         MovieList lista = new MovieList(userRepository.findById(eu.getId()).orElseThrow());
         preencher(lista, dados);
         lista = movieListRepository.save(lista);
-        definirFilmes(lista, dados.movieIds());
+        definirItens(lista, dados);
         return MovieListDTO.completa(lista, engajamento(lista, eu));
     }
 
@@ -105,7 +127,7 @@ public class MovieListService implements ApplicationRunner {
     public MovieListDTO atualizar(User eu, Long id, MovieListRequestDTO dados) {
         MovieList lista = buscarMinha(eu, id);
         preencher(lista, dados);
-        definirFilmes(lista, dados.movieIds());
+        definirItens(lista, dados);
         return MovieListDTO.completa(lista, engajamento(lista, eu));
     }
 
@@ -134,7 +156,7 @@ public class MovieListService implements ApplicationRunner {
     @Transactional
     public MovieListDTO removerFilme(User eu, Long id, Long movieId) {
         MovieList lista = buscarMinha(eu, id);
-        if (lista.getEntries().removeIf(e -> e.getMovie().getId().equals(movieId))) {
+        if (lista.getEntries().removeIf(e -> !e.isSeries() && e.getMovie().getId().equals(movieId))) {
             lista.setUpdatedAt(Instant.now());
         }
         return MovieListDTO.resumo(lista, false);
@@ -245,24 +267,38 @@ public class MovieListService implements ApplicationRunner {
         lista.setUpdatedAt(Instant.now());
     }
 
-    private void definirFilmes(MovieList lista, List<Long> movieIds) {
-        // repetidos contam uma vez só
-        List<Long> ids = new ArrayList<>(new LinkedHashSet<>(movieIds == null ? List.of() : movieIds));
-        if (ids.size() > FILMES_MAX) {
-            throw new IllegalArgumentException("Uma lista pode ter até " + FILMES_MAX + " filmes.");
+    private void definirItens(MovieList lista, MovieListRequestDTO dados) {
+        // "M12" / "S3", na ordem da lista; repetidos contam uma vez só
+        LinkedHashSet<String> chaves = new LinkedHashSet<>();
+        if (dados.items() != null) {
+            for (MovieListRequestDTO.Item item : dados.items()) {
+                if (item == null || item.id() == null) continue;
+                chaves.add(("SERIES".equalsIgnoreCase(item.kind()) ? "S" : "M") + item.id());
+            }
+        } else {
+            if (dados.movieIds() != null) dados.movieIds().forEach(id -> chaves.add("M" + id));
+            // cliente antigo (só filmes): as séries que já estavam na lista continuam, no fim
+            lista.getEntries().stream().filter(MovieListEntry::isSeries).forEach(e -> chaves.add(e.chave()));
+        }
+        if (chaves.size() > FILMES_MAX) {
+            throw new IllegalArgumentException("Uma lista pode ter até " + FILMES_MAX + " títulos.");
         }
         // quem continua na lista mantém a data em que entrou (a atividade do filme usa)
-        Map<Long, Instant> entradas = new HashMap<>();
+        Map<String, Instant> entradas = new HashMap<>();
         lista.getEntries().forEach(e -> {
-            if (e.getAddedAt() != null) entradas.put(e.getMovie().getId(), e.getAddedAt());
+            if (e.getAddedAt() != null) entradas.put(e.chave(), e.getAddedAt());
         });
         // o Hibernate insere antes de apagar: sem o flush, um filme que continua na lista
         // esbarraria na restrição única (lista, filme)
         lista.getEntries().clear();
         movieListRepository.saveAndFlush(lista);
-        for (int i = 0; i < ids.size(); i++) {
-            MovieListEntry entrada = new MovieListEntry(lista, buscarFilme(ids.get(i)), i + 1);
-            if (entradas.containsKey(ids.get(i))) entrada.setAddedAt(entradas.get(ids.get(i)));
+        int posicao = 1;
+        for (String chave : chaves) {
+            Long id = Long.valueOf(chave.substring(1));
+            MovieListEntry entrada = chave.startsWith("S")
+                    ? new MovieListEntry(lista, buscarSerie(id), posicao++)
+                    : new MovieListEntry(lista, buscarFilme(id), posicao++);
+            if (entradas.containsKey(chave)) entrada.setAddedAt(entradas.get(chave));
             lista.getEntries().add(entrada);
         }
     }
@@ -274,7 +310,7 @@ public class MovieListService implements ApplicationRunner {
     }
 
     private static boolean contem(MovieList lista, Long movieId) {
-        return lista.getEntries().stream().anyMatch(e -> e.getMovie().getId().equals(movieId));
+        return lista.getEntries().stream().anyMatch(e -> !e.isSeries() && e.getMovie().getId().equals(movieId));
     }
 
     private static boolean ehDono(User dono, User quemVe) {
@@ -292,6 +328,11 @@ public class MovieListService implements ApplicationRunner {
     private MovieList buscarLista(Long id) {
         return movieListRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lista não encontrada. Id: " + id));
+    }
+
+    private Series buscarSerie(Long seriesId) {
+        return seriesRepository.findById(seriesId)
+                .orElseThrow(() -> new ResourceNotFoundException("Série não encontrada. Id: " + seriesId));
     }
 
     private Movie buscarFilme(Long movieId) {

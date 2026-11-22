@@ -187,7 +187,8 @@ public class AccountService {
         if (email.equalsIgnoreCase(salvo.getEmail())) {
             throw new IllegalArgumentException("Esse já é o e-mail da sua conta.");
         }
-        if (userRepository.existsByEmailIgnoreCase(email)) {
+        // o e-mail da conta das listas oficiais fica reservado, mesmo antes de ela existir
+        if (userRepository.existsByEmailIgnoreCase(email) || email.equals(NitrateAccountService.EMAIL)) {
             throw new EmailJaCadastradoException(email);
         }
 
@@ -294,7 +295,7 @@ public class AccountService {
                         .toList(),
                 movieListRepository.findByUserOrderByUpdatedAtDesc(u).stream()
                         .map(l -> new AccountExportDTO.FilmList(l.getName(), l.getDescription(), l.isPublicList(),
-                                l.getEntries().stream().map(e -> filme(e.getMovie())).toList(), l.getCreatedAt()))
+                                l.getEntries().stream().filter(e -> !e.isSeries()).map(e -> filme(e.getMovie())).toList(), l.getCreatedAt()))
                         .toList(),
                 reviewCommentRepository.findByUserOrderByCreatedAtDesc(u).stream()
                         .map(c -> new AccountExportDTO.Comment(filme(c.getReview().getMovie()),

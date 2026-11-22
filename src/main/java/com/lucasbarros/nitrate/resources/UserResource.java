@@ -240,6 +240,13 @@ public class UserResource {
         return favoritePeopleService.definirFavoritos(principal.getUser(), FavoritePerson.Kind.DIRECTOR, request.tmdbIds());
     }
 
+    // home: as listas públicas de quem eu sigo
+    @GetMapping("/me/friends/lists")
+    public List<MovieListDTO> listasDosAmigos(@AuthenticationPrincipal CustomUserDetails principal,
+                                              @RequestParam(defaultValue = "6") int limit) {
+        return movieListService.listasDosAmigos(principal.getUser(), limit);
+    }
+
     // com movieId, cada lista diz se já tem o filme (o "adicionar à lista" da página do filme)
     @GetMapping("/me/lists")
     public List<MovieListDTO> minhasListas(@AuthenticationPrincipal CustomUserDetails principal,

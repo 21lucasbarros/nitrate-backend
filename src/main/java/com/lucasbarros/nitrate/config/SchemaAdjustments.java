@@ -64,6 +64,15 @@ public class SchemaAdjustments implements ApplicationRunner {
             log.info("tb_notification.movie_id agora aceita nulo (notificações de seguidor)");
         }
 
+        // listas passaram a aceitar séries: o item de série não tem filme
+        List<String> filmeDaLista = jdbc.queryForList(
+                "select is_nullable from information_schema.columns " +
+                "where table_name = 'tb_movie_list_entry' and column_name = 'movie_id'", String.class);
+        if (!filmeDaLista.isEmpty() && "NO".equals(filmeDaLista.get(0))) {
+            jdbc.execute("alter table tb_movie_list_entry alter column movie_id drop not null");
+            log.info("tb_movie_list_entry.movie_id agora aceita nulo (séries nas listas)");
+        }
+
         // o Hibernate cria um check com os valores do enum na criação da tabela e não o atualiza;
         // sem removê-lo, tipos novos (FOLLOW, SERIES_PREMIERE, SERIES_SEASON) seriam recusados pelo banco
         List<String> checks = jdbc.queryForList(
