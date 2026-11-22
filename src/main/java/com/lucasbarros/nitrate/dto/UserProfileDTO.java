@@ -17,6 +17,9 @@ public class UserProfileDTO {
     private long reviewsCount;
     private long likesCount;
     private long watchlistCount;
+    // séries: quantas a pessoa registrou (sem repetir) e quantas estão na watchlist de séries
+    private long seriesCount;
+    private long seriesWatchlistCount;
     private long followersCount;
     private long followingCount;
     private List<MovieDTO> favorites;
@@ -81,4 +84,12 @@ public class UserProfileDTO {
     public Boolean getAdmin() { return admin; }
     public String getEmail() { return email; }
     public Cover getCover() { return cover; }
+    public long getSeriesCount() { return seriesCount; }
+    public long getSeriesWatchlistCount() { return seriesWatchlistCount; }
+
+    public UserProfileDTO comSeries(long seriesCount, long seriesWatchlistCount) {
+        this.seriesCount = seriesCount;
+        this.seriesWatchlistCount = seriesWatchlistCount;
+        return this;
+    }
 }

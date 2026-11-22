@@ -1,6 +1,7 @@
 package com.lucasbarros.nitrate.resources;
 
 import com.lucasbarros.nitrate.dto.AccountDeletionDTO;
+import com.lucasbarros.nitrate.dto.DiaryEntryDTO;
 import com.lucasbarros.nitrate.dto.AchievementDTO;
 import com.lucasbarros.nitrate.dto.AchievementVisibilityDTO;
 import com.lucasbarros.nitrate.dto.PersonProgressDTO;
@@ -327,6 +328,16 @@ public class UserResource {
                                       @RequestParam(defaultValue = "30") int size,
                                       @RequestParam(defaultValue = "false") boolean withText) {
         return userService.reviews(username, page, size, withText);
+    }
+
+    // aba Reviews do perfil: filmes e séries juntos; type = filmes, series ou vazio (tudo)
+    @GetMapping("/{username}/diary")
+    public PageDTO<DiaryEntryDTO> diario(@PathVariable String username,
+                                         @RequestParam(defaultValue = "0") int page,
+                                         @RequestParam(defaultValue = "30") int size,
+                                         @RequestParam(defaultValue = "false") boolean withText,
+                                         @RequestParam(required = false) String type) {
+        return userService.diario(username, page, size, withText, UserService.TipoDiario.de(type));
     }
 
     // todos os filmes assistidos, sem repetir reassistidos; ordem: lancamento (padrão), lancamento-antigos,

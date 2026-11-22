@@ -1,9 +1,11 @@
 package com.lucasbarros.nitrate.services;
 
+import com.lucasbarros.nitrate.dto.DiaryEntryDTO;
 import com.lucasbarros.nitrate.dto.FilmDTO;
 import com.lucasbarros.nitrate.dto.MovieUserStateDTO;
 import com.lucasbarros.nitrate.dto.PageDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
+import com.lucasbarros.nitrate.dto.SeriesReviewDTO;
 import com.lucasbarros.nitrate.dto.UserProfileDTO;
 import com.lucasbarros.nitrate.dto.WatchlistItemDTO;
 import com.lucasbarros.nitrate.entities.Movie;
@@ -12,6 +14,8 @@ import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.entities.WatchlistItem;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
+import com.lucasbarros.nitrate.repositories.SeriesReviewRepository;
+import com.lucasbarros.nitrate.repositories.SeriesWatchlistRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.repositories.WatchlistRepository;
 import com.lucasbarros.nitrate.security.AdminAccess;
@@ -23,6 +27,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -36,6 +41,8 @@ public class UserService {
 
     @Autowired private UserRepository userRepository;
     @Autowired private ReviewRepository reviewRepository;
+    @Autowired private SeriesReviewRepository seriesReviewRepository;
+    @Autowired private SeriesWatchlistRepository seriesWatchlistRepository;
     @Autowired private WatchlistRepository watchlistRepository;
     @Autowired private MovieRepository movieRepository;
     @Autowired private SocialService socialService;
@@ -62,7 +69,8 @@ public class UserService {
         return new UserProfileDTO(
                 user,
                 reviewRepository.countFilmesDistintos(user),
-                reviewRepository.countByUserAndTextIsNotNull(user),
+                // reviews escritas de filmes e de séries
+                reviewRepository.countByUserAndTextIsNotNull(user) + seriesReviewRepository.countByUserAndTextIsNotNull(user),
                 reviewRepository.countByUserAndLikedTrue(user),
                 watchlistRepository.countByUser(user),
                 socialService.contarSeguidores(user),
@@ -72,7 +80,8 @@ public class UserService {
                 segueQuemVe,
                 badgeService.doUsuario(user),
                 admin,
-                proprio ? user.getEmail() : null);
+                proprio ? user.getEmail() : null)
+                .comSeries(seriesReviewRepository.countSeriesDistintas(user), seriesWatchlistRepository.countByUser(user));
     }
 
     private static final int TAMANHO_MAX_PAGINA = 60;
@@ -89,6 +98,61 @@ public class UserService {
                 ? reviewRepository.findByUserAndTextIsNotNull(user, pageRequest)
                 : reviewRepository.findByUser(user, pageRequest);
         return PageDTO.of(resultado, ReviewDTO::new);
+    }
+
+    /** o que o diário mostra: tudo, só filmes ou só séries */
+    public enum TipoDiario {
+        TUDO, FILMES, SERIES;
+
+        public static TipoDiario de(String valor) {
+            if ("filmes".equalsIgnoreCase(valor)) return FILMES;
+            if ("series".equalsIgnoreCase(valor)) return SERIES;
+            return TUDO;
+        }
+    }
+
+    private record ItemDoDiario(LocalDate watchedOn, Instant createdAt, DiaryEntryDTO dto) {}
+
+    private static final Comparator<ItemDoDiario> ORDEM_DO_DIARIO = Comparator
+            .comparing(ItemDoDiario::watchedOn, Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(ItemDoDiario::createdAt, Comparator.nullsLast(Comparator.reverseOrder()));
+
+    /**
+     * Diário paginado com filmes e séries juntos, do que assistiu por último para trás. Filmes e séries
+     * ficam em tabelas separadas: para a página N, vêm as (N+1)·tamanho primeiras de cada uma, na mesma
+     * ordem, e a junção é cortada no lugar da página.
+     */
+    @Transactional(readOnly = true)
+    public PageDTO<DiaryEntryDTO> diario(String username, int pagina, int tamanho, boolean comTexto, TipoDiario tipo) {
+        User user = buscarPorUsername(username);
+        int size = Math.min(Math.max(1, tamanho), TAMANHO_MAX_PAGINA);
+        int page = Math.max(0, pagina);
+        boolean filmes = tipo != TipoDiario.SERIES;
+        boolean series = tipo != TipoDiario.FILMES;
+
+        long totalFilmes = !filmes ? 0 : comTexto ? reviewRepository.countByUserAndTextIsNotNull(user) : reviewRepository.countByUser(user);
+        long totalSeries = !series ? 0 : comTexto ? seriesReviewRepository.countByUserAndTextIsNotNull(user) : seriesReviewRepository.countByUser(user);
+        long total = totalFilmes + totalSeries;
+        int totalPages = (int) ((total + size - 1) / size);
+        long inicio = (long) page * size;
+        if (inicio >= total) return new PageDTO<>(List.of(), page, size, total, totalPages);
+
+        int ate = (int) Math.min(inicio + size, total);
+        // nulls last nos dois lados: o banco e o comparador precisam concordar na ordem
+        PageRequest topo = PageRequest.of(0, ate,
+                Sort.by(Sort.Order.desc("watchedOn").nullsLast(), Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+        List<ItemDoDiario> itens = new ArrayList<>();
+        if (totalFilmes > 0) {
+            (comTexto ? reviewRepository.findByUserAndTextIsNotNull(user, topo) : reviewRepository.findByUser(user, topo))
+                    .forEach(r -> itens.add(new ItemDoDiario(r.getWatchedOn(), r.getCreatedAt(), DiaryEntryDTO.filme(new ReviewDTO(r)))));
+        }
+        if (totalSeries > 0) {
+            (comTexto ? seriesReviewRepository.findByUserAndTextIsNotNull(user, topo) : seriesReviewRepository.findByUser(user, topo))
+                    .forEach(r -> itens.add(new ItemDoDiario(r.getWatchedOn(), r.getCreatedAt(), DiaryEntryDTO.serie(new SeriesReviewDTO(r)))));
+        }
+        itens.sort(ORDEM_DO_DIARIO);
+        List<DiaryEntryDTO> dtos = itens.subList((int) inicio, Math.min(ate, itens.size())).stream().map(ItemDoDiario::dto).toList();
+        return new PageDTO<>(dtos, page, size, total, totalPages);
     }
 
     /** ordens da aba "Filmes" do perfil; o padrão é do lançamento mais novo para o mais antigo */

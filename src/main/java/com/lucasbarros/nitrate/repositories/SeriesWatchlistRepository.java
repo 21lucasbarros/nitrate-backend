@@ -13,6 +13,7 @@ import java.util.Optional;
 
 public interface SeriesWatchlistRepository extends JpaRepository<SeriesWatchlistItem, Long> {
     List<SeriesWatchlistItem> findByUserOrderByAddedAtDesc(User user);
+    long countByUser(User user);
     Optional<SeriesWatchlistItem> findByUserAndSeries(User user, Series series);
     boolean existsByUserAndSeries(User user, Series series);
     List<SeriesWatchlistItem> findBySeries(Series series);
