@@ -1,5 +1,6 @@
 package com.lucasbarros.nitrate.services;
 
+import com.lucasbarros.nitrate.dto.SeasonDTO;
 import com.lucasbarros.nitrate.dto.SeriesDTO;
 import com.lucasbarros.nitrate.dto.SeriesReviewDTO;
 import com.lucasbarros.nitrate.dto.SeriesReviewRequestDTO;
@@ -13,6 +14,7 @@ import com.lucasbarros.nitrate.repositories.SeriesWatchlistRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.services.exceptions.ForbiddenException;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
+import com.lucasbarros.nitrate.tmdb.TmdbImportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -149,6 +151,26 @@ public class SeriesDiaryService {
         return review;
     }
 
+    /**
+     * A série, a temporada ou o episódio já estreou. Temporada e episódio usam a data do TMDB (a mesma
+     * consulta da página, em cache); sem a data, ou com o TMDB fora do ar, fica no benefício da dúvida.
+     */
+    private boolean jaFoiAoAr(Series serie, Integer temporada, Integer episodio) {
+        if (!serie.jaEstreou()) return false;
+        if (temporada == null) return true;
+        try {
+            SeasonDTO t = seriesService.temporada(serie.getId(), temporada);
+            String data = episodio == null ? t.airDate() : t.episodes().stream()
+                    .filter(e -> e.episodeNumber() == episodio)
+                    .map(SeasonDTO.Episode::airDate)
+                    .findFirst().orElse(null);
+            LocalDate estreia = TmdbImportService.extrairData(data);
+            return estreia == null || !estreia.isAfter(LocalDate.now());
+        } catch (RuntimeException e) {
+            return true;
+        }
+    }
+
     private void aplicar(SeriesReview review, SeriesReviewRequestDTO request) {
         Double nota = request.rating();
         if (nota != null && (nota < 0.5 || nota > 5 || nota * 2 != Math.floor(nota * 2))) {
@@ -167,6 +189,12 @@ public class SeriesDiaryService {
         }
         if (episodio != null && episodio < 1) {
             throw new IllegalArgumentException("Episódio inválido: " + episodio);
+        }
+        // como nos filmes: antes da estreia dá para registrar, escrever e curtir, mas não dar nota
+        if (nota != null && !jaFoiAoAr(review.getSeries(), temporada, episodio)) {
+            String oQue = episodio != null ? "Este episódio ainda não foi ao ar" : temporada != null
+                    ? "Esta temporada ainda não estreou" : "Esta série ainda não estreou";
+            throw new IllegalArgumentException(oQue + ": a nota fica liberada a partir da estreia");
         }
 
         String texto = request.text() == null ? null : request.text().trim();

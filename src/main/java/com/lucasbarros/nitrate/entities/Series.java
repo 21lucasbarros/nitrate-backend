@@ -93,6 +93,13 @@ public class Series implements Serializable {
     public LocalDate getFirstAirDate() { return firstAirDate; }
     public void setFirstAirDate(LocalDate firstAirDate) { this.firstAirDate = firstAirDate; }
 
+    // como no filme: com a data, vale a data; sem ela, um ano futuro (ou série só anunciada) não estreou
+    public boolean jaEstreou() {
+        if (firstAirDate != null) return !firstAirDate.isAfter(LocalDate.now());
+        if (firstAirYear != null) return firstAirYear <= LocalDate.now().getYear();
+        return !"Planned".equals(status) && !"In Production".equals(status);
+    }
+
     public Boolean getRadarEstreou() { return radarEstreou; }
     public void setRadarEstreou(Boolean radarEstreou) { this.radarEstreou = radarEstreou; }
 

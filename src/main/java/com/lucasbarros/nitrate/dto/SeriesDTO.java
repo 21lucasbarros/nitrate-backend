@@ -19,11 +19,12 @@ public record SeriesDTO(
         String creators,
         List<String> genres,
         String posterPath,
-        String overview) {
+        String overview,
+        boolean released) {  // antes da estreia dá para registrar e curtir, mas não dar nota
 
     public SeriesDTO(Series s) {
         this(s.getId(), s.getTmdbId(), s.getSlug(), s.getName(), s.getFirstAirYear(), s.getLastAirYear(),
                 s.getStatus(), s.getNumberOfSeasons(), s.getNumberOfEpisodes(), s.getRating(), s.getCreators(),
-                List.copyOf(s.getGenres()), s.getPosterPath(), s.getOverview());
+                List.copyOf(s.getGenres()), s.getPosterPath(), s.getOverview(), s.jaEstreou());
     }
 }

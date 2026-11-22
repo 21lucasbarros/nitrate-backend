@@ -26,6 +26,8 @@ public class TmdbMovieDetailDTO {
 
     private String tagline;
 
+    private Integer runtime; // minutos; 0 ou nulo quando o TMDB ainda não sabe
+
     private List<TmdbGenreDTO> genres = new ArrayList<>();
 
     @JsonProperty("belongs_to_collection")
@@ -51,6 +53,8 @@ public class TmdbMovieDetailDTO {
     public void setBackdropPath(String backdropPath) { this.backdropPath = backdropPath; }
     public String getTagline() { return tagline; }
     public void setTagline(String tagline) { this.tagline = tagline; }
+    public Integer getRuntime() { return runtime; }
+    public void setRuntime(Integer runtime) { this.runtime = runtime; }
     public List<TmdbGenreDTO> getGenres() { return genres; }
     public void setGenres(List<TmdbGenreDTO> genres) { this.genres = genres; }
     public TmdbCollectionDTO getBelongsToCollection() { return belongsToCollection; }

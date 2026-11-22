@@ -207,7 +207,8 @@ public class MovieService {
             }
         }
         String tagline = detalhe.getTagline() == null || detalhe.getTagline().isBlank() ? null : detalhe.getTagline();
-        MovieCreditsDTO resultado = new MovieCreditsDTO(direcao, elenco, detalhe.getBackdropPath(), tagline);
+        Integer duracao = detalhe.getRuntime() == null || detalhe.getRuntime() <= 0 ? null : detalhe.getRuntime();
+        MovieCreditsDTO resultado = new MovieCreditsDTO(direcao, elenco, detalhe.getBackdropPath(), tagline, duracao);
         cacheCreditos.put(filme.getTmdbId(), new CreditosEmCache(resultado, Instant.now()));
         return resultado;
     }
