@@ -54,8 +54,21 @@ public class ProfileCoverService {
             throw new ResourceNotFoundException("Filme não encontrado no TMDB. Id: " + tmdbId);
         }
 
-        List<TmdbMovieImagesDTO.Image> imagens = detalhe.getImages() == null ? List.of() : detalhe.getImages().getBackdrops();
-        List<String> caminhos = imagens.stream()
+        List<String> caminhos = ordenarCenas(detalhe.getImages(), detalhe.getBackdropPath());
+
+        String titulo = detalhe.getTitle() == null || detalhe.getTitle().isBlank() ? "Filme " + tmdbId : detalhe.getTitle();
+        MovieBackdropsDTO resultado = new MovieBackdropsDTO(tmdbId, titulo, SeriesSearchResultDTO.ano(detalhe.getReleaseDate()), caminhos);
+        cache.put(tmdbId, new CenasEmCache(resultado, Instant.now()));
+        return resultado;
+    }
+
+    /**
+     * Os caminhos das cenas, das sem texto e mais votadas para as outras (vale também para as séries). O
+     * TMDB às vezes não lista a cena principal entre as imagens: ela entra no começo.
+     */
+    public static List<String> ordenarCenas(TmdbMovieImagesDTO imagens, String principal) {
+        List<TmdbMovieImagesDTO.Image> lista = imagens == null ? List.of() : imagens.getBackdrops();
+        List<String> caminhos = lista.stream()
                 .filter(i -> i.getFilePath() != null)
                 .sorted(Comparator
                         .comparing((TmdbMovieImagesDTO.Image i) -> i.getLanguage() != null) // sem texto primeiro
@@ -64,17 +77,10 @@ public class ProfileCoverService {
                 .distinct()
                 .limit(MAX_CENAS)
                 .toList();
-        // o TMDB às vezes não lista a cena principal entre as imagens: ela entra no começo
-        if (detalhe.getBackdropPath() != null && !caminhos.contains(detalhe.getBackdropPath())) {
-            caminhos = Stream.concat(Stream.of(detalhe.getBackdropPath()), caminhos.stream())
-                    .limit(MAX_CENAS)
-                    .toList();
+        if (principal != null && !caminhos.contains(principal)) {
+            caminhos = Stream.concat(Stream.of(principal), caminhos.stream()).limit(MAX_CENAS).toList();
         }
-
-        String titulo = detalhe.getTitle() == null || detalhe.getTitle().isBlank() ? "Filme " + tmdbId : detalhe.getTitle();
-        MovieBackdropsDTO resultado = new MovieBackdropsDTO(tmdbId, titulo, SeriesSearchResultDTO.ano(detalhe.getReleaseDate()), caminhos);
-        cache.put(tmdbId, new CenasEmCache(resultado, Instant.now()));
-        return resultado;
+        return caminhos;
     }
 
     @Transactional

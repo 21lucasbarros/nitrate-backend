@@ -1,5 +1,6 @@
 package com.lucasbarros.nitrate.resources;
 
+import com.lucasbarros.nitrate.dto.MovieBackdropsDTO;
 import com.lucasbarros.nitrate.dto.MovieStatsDTO;
 import com.lucasbarros.nitrate.dto.ReviewCommentDTO;
 import com.lucasbarros.nitrate.dto.ReviewCommentRequestDTO;
@@ -77,6 +78,12 @@ public class SeriesResource {
     @GetMapping("/{id}/seasons/{season}")
     public SeasonDTO temporada(@PathVariable Long id, @PathVariable int season) {
         return seriesService.temporada(id, season);
+    }
+
+    // as cenas da série, para escolher o fundo da imagem dos Stories
+    @GetMapping("/{id}/backdrops")
+    public MovieBackdropsDTO cenas(@PathVariable Long id) {
+        return seriesService.cenas(id);
     }
 
     @GetMapping("/{id}/watch-providers")

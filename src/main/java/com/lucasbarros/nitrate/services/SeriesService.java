@@ -1,5 +1,6 @@
 package com.lucasbarros.nitrate.services;
 
+import com.lucasbarros.nitrate.dto.MovieBackdropsDTO;
 import com.lucasbarros.nitrate.dto.MovieStatsDTO;
 import com.lucasbarros.nitrate.dto.SeasonDTO;
 import com.lucasbarros.nitrate.dto.SeriesDTO;
@@ -73,6 +74,7 @@ public class SeriesService {
     private final Map<Long, EmCache<SeriesDetailsDTO>> cacheDetalhes = new ConcurrentHashMap<>();
     private final Map<String, EmCache<SeasonDTO>> cacheTemporadas = new ConcurrentHashMap<>();
     private final Map<Long, EmCache<WatchProvidersDTO>> cacheProvedores = new ConcurrentHashMap<>();
+    private final Map<Long, EmCache<MovieBackdropsDTO>> cacheCenas = new ConcurrentHashMap<>();
 
     // sem @Transactional para não segurar uma conexão do banco enquanto espera o TMDB
     public List<SeriesSearchResultDTO> pesquisar(String termo) {
@@ -275,6 +277,20 @@ public class SeriesService {
         SeasonDTO resultado = new SeasonDTO(numero, t.getName(), vazioParaNulo(t.getOverview()), t.getAirDate(),
                 t.getPosterPath(), episodios);
         cacheTemporadas.put(chave, new EmCache<>(resultado, Instant.now()));
+        return resultado;
+    }
+
+    /** as cenas da série, para o fundo da imagem dos Stories (no mesmo formato das cenas de filme) */
+    public MovieBackdropsDTO cenas(Long id) {
+        Series serie = buscar(id);
+        EmCache<MovieBackdropsDTO> emCache = cacheCenas.get(serie.getTmdbId());
+        if (emCache != null && emCache.valido(VALIDADE_DETALHES)) return emCache.valor();
+
+        // a cena principal (a da página da série) entra mesmo que o TMDB não a liste entre as imagens
+        String principal = detalhes(id).backdropPath();
+        List<String> caminhos = ProfileCoverService.ordenarCenas(tmdbClient.buscarImagensSerie(serie.getTmdbId()), principal);
+        MovieBackdropsDTO resultado = new MovieBackdropsDTO(serie.getTmdbId(), serie.getName(), serie.getFirstAirYear(), caminhos);
+        cacheCenas.put(serie.getTmdbId(), new EmCache<>(resultado, Instant.now()));
         return resultado;
     }
 

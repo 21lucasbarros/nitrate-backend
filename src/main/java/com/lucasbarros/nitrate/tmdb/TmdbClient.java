@@ -1,6 +1,7 @@
 package com.lucasbarros.nitrate.tmdb;
 
 import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieDetailDTO;
+import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieImagesDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonSearchResponseDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPopularResponseDTO;
@@ -251,6 +252,18 @@ public class TmdbClient {
                         .build(tmdbId))
                 .retrieve()
                 .body(TmdbTvDetailDTO.class);
+    }
+
+    /** as cenas da série (backdrops), sem filtro de pt-BR: as sem texto (null) são a maioria e as melhores */
+    public TmdbMovieImagesDTO buscarImagensSerie(Long tmdbId) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/tv/{id}/images")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("include_image_language", "null,pt,en")
+                        .build(tmdbId))
+                .retrieve()
+                .body(TmdbMovieImagesDTO.class);
     }
 
     public TmdbTvSeasonDTO buscarTemporada(Long tmdbId, int temporada) {
