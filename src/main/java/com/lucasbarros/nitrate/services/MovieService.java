@@ -6,7 +6,6 @@ import com.lucasbarros.nitrate.dto.MovieSearchResultDTO;
 import com.lucasbarros.nitrate.dto.MovieStatsDTO;
 import com.lucasbarros.nitrate.dto.PageDTO;
 import com.lucasbarros.nitrate.dto.WatchProvidersDTO;
-import com.lucasbarros.nitrate.graph.MovieGraphCache;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.Review;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
@@ -57,9 +56,6 @@ public class MovieService {
 
     @Autowired
     private TmdbImportService tmdbImportService;
-
-    @Autowired
-    private MovieGraphCache graphCache;
 
     @Autowired
     private ReviewRepository reviewRepository;
@@ -143,15 +139,11 @@ public class MovieService {
     // (o tmdbId é único). A importação roda e faz commit na sua própria transação.
     // ReentrantLock e não synchronized: com virtual threads, um synchronized que espera a rede
     // (a chamada ao TMDB) prende a thread do sistema e pode travar o servidor inteiro.
+    // filme novo não invalida o grafo: ele entra na próxima montagem (ver MovieGraphCache)
     public Long obterOuImportarId(Long tmdbId) {
         importacao.lock();
         try {
-            boolean jaExistia = movieRepository.existsByTmdbId(tmdbId);
-            Long id = tmdbImportService.obterOuImportar(tmdbId).getId();
-            if (!jaExistia) {
-                graphCache.invalidar(); // filme novo no acervo: o grafo precisa incluí-lo
-            }
-            return id;
+            return tmdbImportService.obterOuImportar(tmdbId).getId();
         } finally {
             importacao.unlock();
         }

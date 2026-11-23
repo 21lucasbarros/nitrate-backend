@@ -23,14 +23,18 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
     List<String> findAllSlugs();
     List<Movie> findByTmdbIdIn(Collection<Long> tmdbIds);
 
-    // o grafo carrega o acervo em duas consultas: buscar gêneros e elenco juntos multiplicaria
-    // as linhas e duplicaria os itens da lista de elenco (cada ator contaria várias vezes)
-    @Query("select distinct m from Movie m " +
-            "left join fetch m.director left join fetch m.franchise left join fetch m.genres")
-    List<Movie> findAllParaGrafo();
+    // o grafo carrega o acervo em três consultas só com as colunas que usa: buscar as entidades
+    // com join fetch repetia a linha inteira do filme (com o overview) a cada gênero e a cada
+    // membro do elenco, dezenas de MB por montagem
+    @Query("select m.id, m.title, m.releaseYear, m.rating, m.tmdbId, m.slug, m.posterPath, m.releaseDate, " +
+            "d.id, d.name, f.id, f.name from Movie m left join m.director d left join m.franchise f")
+    List<Object[]> findResumosParaGrafo();
 
-    @Query("select distinct m from Movie m left join fetch m.cast c left join fetch c.actor where m in :filmes")
-    List<Movie> carregarElenco(@Param("filmes") Collection<Movie> filmes);
+    @Query("select m.id, g.id, g.name from Movie m join m.genres g")
+    List<Object[]> findGenerosParaGrafo();
+
+    @Query("select c.movie.id, a.id, a.name, c.role from MovieCast c join c.actor a")
+    List<Object[]> findElencoParaGrafo();
 
     @Modifying
     @Transactional
