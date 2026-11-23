@@ -9,7 +9,7 @@ import java.util.Objects;
 /**
  * Aviso para a pessoa: um filme da watchlist chegou aos cinemas ou ao streaming, uma série
  * estreou ou ganhou temporada nova (Radar de Estreias), alguém começou a seguir ela, ou alguém
- * marcou que assistiu um filme com ela (convite de review em conjunto) e aceitou o convite dela.
+ * marcou que assistiu um filme ou uma série com ela (convite de review em conjunto) e aceitou o convite dela.
  */
 @Entity
 @Table(name = "tb_notification",
@@ -48,6 +48,11 @@ public class Notification implements Serializable {
     @ManyToOne
     @JoinColumn(name = "collaboration_id")
     private ReviewCollaboration collaboration;
+
+    // em COLLAB_INVITE e COLLAB_ACCEPTED de um registro de série (no lugar de `collaboration`)
+    @ManyToOne
+    @JoinColumn(name = "series_collaboration_id")
+    private SeriesReviewCollaboration seriesCollaboration;
 
     // quem fez a ação (em FOLLOW, quem começou a seguir; nos convites, quem convidou ou aceitou); nulo nas estreias
     @ManyToOne
@@ -119,12 +124,31 @@ public class Notification implements Serializable {
         return n;
     }
 
+    public static Notification conviteDeReview(SeriesReviewCollaboration c) {
+        Notification n = new Notification();
+        n.user = c.getInvitee();
+        n.actor = c.getAuthor();
+        n.seriesCollaboration = c;
+        n.type = Type.COLLAB_INVITE;
+        return n;
+    }
+
+    public static Notification conviteAceito(SeriesReviewCollaboration c) {
+        Notification n = new Notification();
+        n.user = c.getAuthor();
+        n.actor = c.getInvitee();
+        n.seriesCollaboration = c;
+        n.type = Type.COLLAB_ACCEPTED;
+        return n;
+    }
+
     public Long getId() { return id; }
     public User getUser() { return user; }
     public Movie getMovie() { return movie; }
     public Series getSeries() { return series; }
     public Integer getSeasonNumber() { return seasonNumber; }
     public ReviewCollaboration getCollaboration() { return collaboration; }
+    public SeriesReviewCollaboration getSeriesCollaboration() { return seriesCollaboration; }
     public User getActor() { return actor; }
     public Type getType() { return type; }
     public String getDetail() { return detail; }

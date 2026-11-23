@@ -89,6 +89,8 @@ public class SecurityConfig {
                                 new AuthorizationDecision(segredoAdminValido(contexto.getRequest())
                                         || contaAdmin(autenticacao.get())))
                         .requestMatchers(HttpMethod.GET, "/movies/**").permitAll()
+                        // o convite de registro de série em conjunto é só de quem convidou e de quem foi marcado
+                        .requestMatchers("/series/reviews/invites/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/series/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/people/**").permitAll()
                         .requestMatchers("/users/me", "/users/me/**").authenticated()

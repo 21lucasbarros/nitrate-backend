@@ -5,8 +5,10 @@ import com.lucasbarros.nitrate.dto.SeriesDTO;
 import com.lucasbarros.nitrate.dto.SeriesReviewDTO;
 import com.lucasbarros.nitrate.dto.SeriesReviewRequestDTO;
 import com.lucasbarros.nitrate.dto.SeriesUserStateDTO;
+import com.lucasbarros.nitrate.entities.ReviewCollaboration;
 import com.lucasbarros.nitrate.entities.Series;
 import com.lucasbarros.nitrate.entities.SeriesReview;
+import com.lucasbarros.nitrate.entities.SeriesReviewCollaboration;
 import com.lucasbarros.nitrate.entities.SeriesWatchlistItem;
 import com.lucasbarros.nitrate.entities.User;
 import com.lucasbarros.nitrate.repositories.SeriesReviewRepository;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 /** O diário de séries: registros (da série inteira, de uma temporada ou de um episódio) e a watchlist de séries. */
 @Service
@@ -37,29 +40,78 @@ public class SeriesDiaryService {
     @Autowired private UserRepository userRepository;
     @Autowired private SeriesService seriesService;
     @Autowired private SeriesReviewSocialService seriesReviewSocialService;
+    @Autowired private SeriesReviewCollaborationService collaborationService;
 
     @Transactional
     public SeriesReviewDTO criar(User user, SeriesReviewRequestDTO request) {
         if (request.seriesId() == null) {
             throw new IllegalArgumentException("Informe a série (seriesId)");
         }
-        Series serie = seriesService.buscar(request.seriesId());
+        SeriesReview review = registrar(user, seriesService.buscar(request.seriesId()), request);
+        collaborationService.definirConvites(user, review, request.watchedWith());
+        return new SeriesReviewDTO(review);
+    }
+
+    /**
+     * Aceita o convite de registro em conjunto: com `request`, quem foi convidado escreve o próprio
+     * registro; sem, o de quem convidou é copiado para ele (o que assistiu, nota, curtida, texto e data).
+     * A série, a temporada e o episódio são sempre os de quem convidou.
+     */
+    @Transactional
+    public SeriesReviewDTO aceitarColaboracao(User user, Long collaborationId, SeriesReviewRequestDTO request) {
+        SeriesReviewCollaboration c = collaborationService.paraResponder(user, collaborationId);
+        SeriesReview original = c.getAuthorReview();
+        boolean compartilhada = request == null;
+        SeriesReviewRequestDTO dados = compartilhada
+                ? new SeriesReviewRequestDTO(null, original.getSeasonNumber(), original.getEpisodeNumber(),
+                        original.getRating(), original.getText(), original.isLiked(), original.isSpoiler(), false,
+                        original.getWatchedOn(), null)
+                : new SeriesReviewRequestDTO(null, original.getSeasonNumber(), original.getEpisodeNumber(),
+                        request.rating(), request.text(), request.liked(), request.spoiler(), request.rewatch(),
+                        request.watchedOn(), null);
+
+        SeriesReview review = registrar(user, original.getSeries(), dados);
+        collaborationService.concluirAceite(c, review, compartilhada);
+        return new SeriesReviewDTO(review);
+    }
+
+    // o registro em si: salva e, se foi a série inteira, tira da watchlist
+    private SeriesReview registrar(User user, Series serie, SeriesReviewRequestDTO request) {
         SeriesReview review = new SeriesReview(user, serie);
         aplicar(review, request);
+        // como nos filmes: registrar de novo a mesma série, temporada ou episódio é sempre reassistido
+        if (jaRegistrou(user, serie, review.getSeasonNumber(), review.getEpisodeNumber())) review.setRewatch(true);
         review = seriesReviewRepository.save(review);
 
         // terminou a série inteira: sai da watchlist
         if (review.getSeasonNumber() == null) {
             seriesWatchlistRepository.findByUserAndSeries(user, serie).ifPresent(seriesWatchlistRepository::delete);
         }
-        return new SeriesReviewDTO(review);
+        return review;
+    }
+
+    private boolean jaRegistrou(User user, Series serie, Integer temporada, Integer episodio) {
+        return seriesReviewRepository.findByUserAndSeriesOrderByWatchedOnDescCreatedAtDesc(user, serie).stream()
+                .anyMatch(r -> Objects.equals(r.getSeasonNumber(), temporada) && Objects.equals(r.getEpisodeNumber(), episodio));
     }
 
     @Transactional
     public SeriesReviewDTO atualizar(User user, Long id, SeriesReviewRequestDTO request) {
         SeriesReview review = buscarDoUsuario(user, id);
+        // registro em conjunto já aceito: todo mundo assistiu a mesma coisa, então a temporada e o episódio
+        // não mudam (com convites só pendentes, quem aceitar depois fica com o que estiver no registro)
+        boolean emConjunto = review.getCollaboration() != null || review.getInvites().stream()
+                .anyMatch(c -> c.getStatus() == ReviewCollaboration.Status.ACCEPTED);
+        boolean mudouOQue = !Objects.equals(request.seasonNumber(), review.getSeasonNumber())
+                || !Objects.equals(request.seasonNumber() == null ? null : request.episodeNumber(), review.getEpisodeNumber());
+        if (emConjunto && mudouOQue) {
+            throw new IllegalArgumentException("Num registro em conjunto, o que vocês assistiram não muda: "
+                    + "para trocar, alguém de vocês precisa apagar o próprio registro.");
+        }
         aplicar(review, request);
         review.setUpdatedAt(Instant.now());
+        collaborationService.definirConvites(user, review, request.watchedWith());
+        collaborationService.aoAtualizar(review);
         return new SeriesReviewDTO(review);
     }
 
@@ -67,6 +119,7 @@ public class SeriesDiaryService {
     public void deletar(User user, Long id) {
         SeriesReview review = buscarDoUsuario(user, id);
         seriesReviewSocialService.limparReview(review);
+        collaborationService.aoApagar(review);
         seriesReviewRepository.delete(review);
     }
 
@@ -213,6 +266,7 @@ public class SeriesDiaryService {
         review.setRating(nota);
         review.setText(texto);
         review.setLiked(request.liked());
+        review.setRewatch(request.rewatch());
         // sem texto não há o que esconder
         review.setSpoiler(texto != null && request.spoiler());
         review.setWatchedOn(assistidoEm);

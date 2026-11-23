@@ -4,6 +4,7 @@ import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.Notification;
 import com.lucasbarros.nitrate.entities.ReviewCollaboration;
 import com.lucasbarros.nitrate.entities.Series;
+import com.lucasbarros.nitrate.entities.SeriesReviewCollaboration;
 import com.lucasbarros.nitrate.entities.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,6 +42,17 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("update Notification n set n.readAt = :agora where n.collaboration = :collaboration " +
             "and n.type = :type and n.readAt is null")
     void marcarComoLidas(@Param("collaboration") ReviewCollaboration collaboration,
+                         @Param("type") Notification.Type type, @Param("agora") Instant agora);
+
+    // o mesmo para os registros de série em conjunto
+    @Modifying
+    @Query("delete from Notification n where n.seriesCollaboration = :collaboration")
+    void deleteBySeriesCollaboration(@Param("collaboration") SeriesReviewCollaboration collaboration);
+
+    @Modifying
+    @Query("update Notification n set n.readAt = :agora where n.seriesCollaboration = :collaboration " +
+            "and n.type = :type and n.readAt is null")
+    void marcarComoLidas(@Param("collaboration") SeriesReviewCollaboration collaboration,
                          @Param("type") Notification.Type type, @Param("agora") Instant agora);
 
     // exclusão de conta: os avisos da pessoa e os que ela gerou para outros

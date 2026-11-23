@@ -51,15 +51,7 @@ public class ReviewCollaborationService {
     @Transactional
     public void definirConvites(User autor, Review review, List<String> usernames) {
         if (usernames == null) return;
-        Set<String> nomes = new LinkedHashSet<>();
-        for (String u : usernames) {
-            String nome = u == null ? "" : u.trim().replaceFirst("^@", "").toLowerCase(Locale.ROOT);
-            if (!nome.isEmpty()) nomes.add(nome);
-        }
-        // a lista é a sessão inteira (quem já aceitou precisa estar nela), então o tamanho dela é o total
-        if (nomes.size() > MAX_PESSOAS) {
-            throw new IllegalArgumentException("Dá para marcar até " + MAX_PESSOAS + " pessoas numa review em conjunto.");
-        }
+        Set<String> nomes = normalizar(usernames);
 
         // quem entrou por convite não marca mais ninguém: a sessão é de quem convidou
         if (review.getCollaboration() != null) {
@@ -88,7 +80,31 @@ public class ReviewCollaborationService {
             }
         }
 
-        // confere todo mundo antes de mandar qualquer convite
+        for (User convidado : convidaveis(autor, nomes)) {
+            ReviewCollaboration c = collaborationRepository.save(new ReviewCollaboration(review, convidado));
+            review.getInvites().add(c);
+            notificationRepository.save(Notification.conviteDeReview(c));
+        }
+    }
+
+    /**
+     * Os usernames do "assisti com", sem @, em minúsculas e sem repetir. A lista é a sessão inteira
+     * (quem já aceitou precisa estar nela), então o tamanho dela é o total. Vale também para as séries.
+     */
+    public static Set<String> normalizar(List<String> usernames) {
+        Set<String> nomes = new LinkedHashSet<>();
+        for (String u : usernames) {
+            String nome = u == null ? "" : u.trim().replaceFirst("^@", "").toLowerCase(Locale.ROOT);
+            if (!nome.isEmpty()) nomes.add(nome);
+        }
+        if (nomes.size() > MAX_PESSOAS) {
+            throw new IllegalArgumentException("Dá para marcar até " + MAX_PESSOAS + " pessoas numa review em conjunto.");
+        }
+        return nomes;
+    }
+
+    /** confere todo mundo que vai receber convite antes de mandar qualquer um (vale também para as séries) */
+    public List<User> convidaveis(User autor, Set<String> nomes) {
         List<User> convidados = new ArrayList<>();
         for (String nome : nomes) {
             User convidado = userRepository.findFirstByUsernameIgnoreCase(nome)
@@ -103,11 +119,7 @@ public class ReviewCollaborationService {
             }
             convidados.add(convidado);
         }
-        for (User convidado : convidados) {
-            ReviewCollaboration c = collaborationRepository.save(new ReviewCollaboration(review, convidado));
-            review.getInvites().add(c);
-            notificationRepository.save(Notification.conviteDeReview(c));
-        }
+        return convidados;
     }
 
     /** o convite, para quem foi convidado (ou quem convidou) ver a review e responder */

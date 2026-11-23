@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /** Registro de uma série no diário: a série inteira (seasonNumber nulo), uma temporada ou um episódio dela. */
@@ -42,7 +44,22 @@ public class SeriesReview implements Serializable {
     @Column(nullable = false, columnDefinition = "boolean not null default false")
     private boolean spoiler;
 
+    // já tinha assistido antes (a mesma série, temporada ou episódio); o default preenche os registros antigos
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean rewatch;
+
     private LocalDate watchedOn;
+
+    // registro em conjunto, em quem aceitou um convite: o convite que liga este registro ao de quem
+    // convidou (nulo no de quem convidou, que tem os convites em `invites`)
+    @ManyToOne
+    @JoinColumn(name = "collaboration_id")
+    private SeriesReviewCollaboration collaboration;
+
+    // registro em conjunto, em quem convidou: um convite para cada pessoa marcada no "assisti com"
+    @OneToMany(mappedBy = "authorReview")
+    @OrderBy("id")
+    private List<SeriesReviewCollaboration> invites = new ArrayList<>();
 
     private Instant createdAt = Instant.now();
 
@@ -83,8 +100,21 @@ public class SeriesReview implements Serializable {
     public boolean isSpoiler() { return spoiler; }
     public void setSpoiler(boolean spoiler) { this.spoiler = spoiler; }
 
+    public boolean isRewatch() { return rewatch; }
+    public void setRewatch(boolean rewatch) { this.rewatch = rewatch; }
+
     public LocalDate getWatchedOn() { return watchedOn; }
     public void setWatchedOn(LocalDate watchedOn) { this.watchedOn = watchedOn; }
+
+    public SeriesReviewCollaboration getCollaboration() { return collaboration; }
+    public void setCollaboration(SeriesReviewCollaboration collaboration) { this.collaboration = collaboration; }
+
+    public List<SeriesReviewCollaboration> getInvites() { return invites; }
+
+    /** o registro de quem convidou: o próprio, se não entrou por convite */
+    public SeriesReview reviewDeOrigem() {
+        return collaboration == null ? this : collaboration.getAuthorReview();
+    }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

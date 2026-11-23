@@ -6,6 +6,8 @@ import com.lucasbarros.nitrate.dto.ReviewCommentRequestDTO;
 import com.lucasbarros.nitrate.dto.ReviewEngagementDTO;
 import com.lucasbarros.nitrate.services.SeriesReviewSocialService;
 import com.lucasbarros.nitrate.dto.SeasonDTO;
+import com.lucasbarros.nitrate.dto.SeriesCollaborationAcceptDTO;
+import com.lucasbarros.nitrate.dto.SeriesCollaborationDTO;
 import com.lucasbarros.nitrate.dto.SeriesDTO;
 import com.lucasbarros.nitrate.dto.SeriesDetailsDTO;
 import com.lucasbarros.nitrate.dto.SeriesReviewDTO;
@@ -14,6 +16,7 @@ import com.lucasbarros.nitrate.dto.SeriesSearchResultDTO;
 import com.lucasbarros.nitrate.dto.WatchProvidersDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
 import com.lucasbarros.nitrate.services.SeriesDiaryService;
+import com.lucasbarros.nitrate.services.SeriesReviewCollaborationService;
 import com.lucasbarros.nitrate.services.SeriesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -32,6 +35,7 @@ public class SeriesResource {
     @Autowired private SeriesService seriesService;
     @Autowired private SeriesDiaryService seriesDiaryService;
     @Autowired private SeriesReviewSocialService seriesReviewSocialService;
+    @Autowired private SeriesReviewCollaborationService collaborationService;
 
     // literais têm prioridade sobre /{id}
     @GetMapping("/search")
@@ -114,6 +118,28 @@ public class SeriesResource {
                                      @PathVariable Long reviewId,
                                      @RequestBody SeriesReviewRequestDTO request) {
         return seriesDiaryService.atualizar(principal.getUser(), reviewId, request);
+    }
+
+    // registro em conjunto: o convite que chega pelo sino para quem foi marcado no "assisti com"
+    @GetMapping("/reviews/invites/{id}")
+    public SeriesCollaborationDTO convite(@AuthenticationPrincipal CustomUserDetails principal, @PathVariable Long id) {
+        return collaborationService.buscar(principal.getUser(), id);
+    }
+
+    // sem `review` no corpo, quem aceita fica com o registro de quem convidou
+    @PostMapping("/reviews/invites/{id}/accept")
+    public ResponseEntity<SeriesReviewDTO> aceitarConvite(@AuthenticationPrincipal CustomUserDetails principal,
+                                                          @PathVariable Long id,
+                                                          @RequestBody(required = false) SeriesCollaborationAcceptDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(seriesDiaryService.aceitarColaboracao(
+                principal.getUser(), id, request == null ? null : request.review()));
+    }
+
+    @PostMapping("/reviews/invites/{id}/decline")
+    public ResponseEntity<Void> recusarConvite(@AuthenticationPrincipal CustomUserDetails principal,
+                                               @PathVariable Long id) {
+        collaborationService.recusar(principal.getUser(), id);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/reviews/{reviewId}")

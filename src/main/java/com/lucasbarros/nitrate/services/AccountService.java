@@ -18,6 +18,7 @@ import com.lucasbarros.nitrate.repositories.MovieListRepository;
 import com.lucasbarros.nitrate.repositories.NotificationRepository;
 import com.lucasbarros.nitrate.repositories.PasswordResetTokenRepository;
 import com.lucasbarros.nitrate.repositories.ReviewCollaborationRepository;
+import com.lucasbarros.nitrate.repositories.SeriesReviewCollaborationRepository;
 import com.lucasbarros.nitrate.repositories.ReviewCommentRepository;
 import com.lucasbarros.nitrate.repositories.ReviewLikeRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
@@ -76,6 +77,7 @@ public class AccountService {
     @Autowired private TasteProfileRepository tasteProfileRepository;
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private ReviewCollaborationRepository reviewCollaborationRepository;
+    @Autowired private SeriesReviewCollaborationRepository seriesReviewCollaborationRepository;
     @Autowired private WatchlistRepository watchlistRepository;
     @Autowired private SeriesReviewRepository seriesReviewRepository;
     @Autowired private SeriesWatchlistRepository seriesWatchlistRepository;
@@ -255,6 +257,8 @@ public class AccountService {
         // antes das reviews: as reviews em conjunto ligam as reviews dela às de outras pessoas
         reviewCollaborationRepository.desligarReviewsDe(salvo);
         reviewCollaborationRepository.deleteAllInvolving(salvo);
+        seriesReviewCollaborationRepository.desligarReviewsDe(salvo);
+        seriesReviewCollaborationRepository.deleteAllInvolving(salvo);
         passwordResetTokenRepository.deleteAllByUser(salvo);
         movieListService.excluirTodas(salvo);
         // antes das reviews: curtidas e comentários apontam para elas
