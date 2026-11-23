@@ -1,9 +1,10 @@
 package com.lucasbarros.nitrate.dto;
 
 import com.lucasbarros.nitrate.entities.Movie;
+import com.lucasbarros.nitrate.entities.Series;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonCreditDTO;
 
-// filme na filmografia de uma pessoa. `id` só existe se o filme já está no nosso banco
+// filme ou série na filmografia de uma pessoa. `id` só existe se já está no nosso banco
 public class PersonCreditDTO {
     // abaixo disso a média do TMDB é ruído (um ou dois votos)
     private static final int VOTOS_MINIMOS_TMDB = 5;
@@ -21,9 +22,20 @@ public class PersonCreditDTO {
     private Double nitrateRating; // média de 0,5 a 5 das notas no Nitrate; null se ninguém deu nota
     private long nitrateRatings;
 
+    private Integer episodes; // só nas séries: em quantos episódios a pessoa aparece
+
     public PersonCreditDTO(TmdbPersonCreditDTO credito, Movie local, Double nitrateRating, long nitrateRatings) {
-        this.id = local == null ? null : local.getId();
-        this.slug = local == null ? null : local.getSlug();
+        this(credito, local == null ? null : local.getId(), local == null ? null : local.getSlug(), nitrateRating, nitrateRatings);
+    }
+
+    public PersonCreditDTO(TmdbPersonCreditDTO credito, Series local, Double nitrateRating, long nitrateRatings) {
+        this(credito, local == null ? null : local.getId(), local == null ? null : local.getSlug(), nitrateRating, nitrateRatings);
+        this.episodes = credito.getEpisodeCount();
+    }
+
+    private PersonCreditDTO(TmdbPersonCreditDTO credito, Long id, String slug, Double nitrateRating, long nitrateRatings) {
+        this.id = id;
+        this.slug = slug;
         this.tmdbId = credito.getId();
         this.title = credito.getTitle();
         this.posterPath = credito.getPosterPath();
@@ -49,4 +61,5 @@ public class PersonCreditDTO {
     public int getTmdbVotes() { return tmdbVotes; }
     public Double getNitrateRating() { return nitrateRating; }
     public long getNitrateRatings() { return nitrateRatings; }
+    public Integer getEpisodes() { return episodes; }
 }

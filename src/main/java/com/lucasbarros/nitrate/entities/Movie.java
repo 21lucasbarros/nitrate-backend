@@ -192,10 +192,11 @@ public class Movie implements Serializable {
         this.releaseDate = releaseDate;
     }
 
-    // sem a data, só o ano: um ano futuro é não lançado; o ano corrente fica no benefício da dúvida
+    // sem a data, só o ano: um ano futuro é não lançado; o ano corrente fica no benefício da dúvida.
+    // sem data nem ano é filme anunciado (o TMDB sempre tem a data de quem já estreou)
     public boolean jaEstreou() {
         if (releaseDate != null) return !releaseDate.isAfter(LocalDate.now());
-        return releaseYear == null || releaseYear <= LocalDate.now().getYear();
+        return releaseYear != null && releaseYear <= LocalDate.now().getYear();
     }
 
     public Boolean getRadarNosCinemas() {

@@ -15,8 +15,10 @@ public class PersonDetailDTO {
     private String deathday;
     private List<PersonCreditDTO> directed;
     private List<PersonCreditDTO> acted;
+    private List<PersonCreditDTO> series; // séries em que atuou
 
-    public PersonDetailDTO(TmdbPersonDetailDTO pessoa, String slug, List<PersonCreditDTO> directed, List<PersonCreditDTO> acted) {
+    public PersonDetailDTO(TmdbPersonDetailDTO pessoa, String slug, List<PersonCreditDTO> directed, List<PersonCreditDTO> acted,
+                           List<PersonCreditDTO> series) {
         this.tmdbId = pessoa.getId();
         this.name = pessoa.getName();
         this.slug = slug;
@@ -27,6 +29,7 @@ public class PersonDetailDTO {
         this.deathday = pessoa.getDeathday();
         this.directed = directed;
         this.acted = acted;
+        this.series = series;
     }
 
     public Long getTmdbId() { return tmdbId; }
@@ -39,4 +42,5 @@ public class PersonDetailDTO {
     public String getDeathday() { return deathday; }
     public List<PersonCreditDTO> getDirected() { return directed; }
     public List<PersonCreditDTO> getActed() { return acted; }
+    public List<PersonCreditDTO> getSeries() { return series; }
 }

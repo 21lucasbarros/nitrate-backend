@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 public interface SeriesReviewRepository extends JpaRepository<SeriesReview, Long> {
@@ -34,6 +35,12 @@ public interface SeriesReviewRepository extends JpaRepository<SeriesReview, Long
     List<SeriesReview> findFeed(@Param("user") User user, Pageable pageable);
 
     // Radar de Estreias: quem já registrou a série (ou uma temporada dela) e vai querer saber da próxima
+    // nota média da série inteira (sem as de temporada e episódio), como a dos filmes na página da pessoa.
+    // Linhas: [Long tmdbId, Double media, Long pessoas]
+    @Query("select r.series.tmdbId, avg(r.rating), count(distinct r.user) from SeriesReview r " +
+            "where r.rating is not null and r.seasonNumber is null and r.series.tmdbId in :tmdbIds group by r.series.tmdbId")
+    List<Object[]> findMediasPorTmdbId(@Param("tmdbIds") Collection<Long> tmdbIds);
+
     @Query("select distinct r.user from SeriesReview r where r.series = :series")
     List<User> findUsuariosQueRegistraram(@Param("series") Series series);
 

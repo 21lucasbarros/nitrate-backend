@@ -164,7 +164,7 @@ public class TmdbClient {
                         .path("/person/{id}")
                         .queryParam("api_key", properties.getApiKey())
                         .queryParam("language", "pt-BR")
-                        .queryParam("append_to_response", "movie_credits")
+                        .queryParam("append_to_response", "movie_credits,tv_credits")
                         .build(personId))
                 .retrieve()
                 .body(TmdbPersonDetailDTO.class);

@@ -23,6 +23,9 @@ public class TmdbPersonDetailDTO {
     @JsonProperty("movie_credits")
     private Credits movieCredits = new Credits();
 
+    @JsonProperty("tv_credits")
+    private Credits tvCredits = new Credits();
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Credits {
         private List<TmdbPersonCreditDTO> cast = new ArrayList<>();
@@ -50,4 +53,6 @@ public class TmdbPersonDetailDTO {
     public void setKnownForDepartment(String knownForDepartment) { this.knownForDepartment = knownForDepartment; }
     public Credits getMovieCredits() { return movieCredits; }
     public void setMovieCredits(Credits movieCredits) { this.movieCredits = movieCredits; }
+    public Credits getTvCredits() { return tvCredits; }
+    public void setTvCredits(Credits tvCredits) { this.tvCredits = tvCredits; }
 }

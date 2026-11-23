@@ -4,8 +4,11 @@ import com.lucasbarros.nitrate.dto.PersonCreditDTO;
 import com.lucasbarros.nitrate.dto.PersonDetailDTO;
 import com.lucasbarros.nitrate.dto.PersonSummaryDTO;
 import com.lucasbarros.nitrate.entities.Movie;
+import com.lucasbarros.nitrate.entities.Series;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
+import com.lucasbarros.nitrate.repositories.SeriesRepository;
+import com.lucasbarros.nitrate.repositories.SeriesReviewRepository;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
 import com.lucasbarros.nitrate.tmdb.TmdbClient;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbPersonCreditDTO;
@@ -27,10 +30,14 @@ public class PersonService {
     private static final int TERMO_MIN = 2;
     private static final int MAX_CREDITOS = 100;
     private static final double POPULARIDADE_MINIMA = 1.0; // abaixo disso são homônimos obscuros
+    // gêneros de TV do TMDB: Talk (10767), News (10763) e Reality (10764)
+    private static final Set<Integer> GENEROS_FORA_DAS_SERIES = Set.of(10767, 10763, 10764);
 
     @Autowired private TmdbClient tmdbClient;
     @Autowired private MovieRepository movieRepository;
     @Autowired private ReviewRepository reviewRepository;
+    @Autowired private SeriesRepository seriesRepository;
+    @Autowired private SeriesReviewRepository seriesReviewRepository;
     @Autowired private PersonSlugService personSlugService;
 
     // filmografias mudam pouco e são lidas pela página, pelas conquistas e pelo grafo: uma consulta
@@ -127,7 +134,39 @@ public class PersonService {
 
         return new PersonDetailDTO(pessoa, personSlugService.slug(pessoa.getId(), pessoa.getName()),
                 paraDTO(dirigidos, localPorTmdbId, mediaPorTmdbId),
-                paraDTO(atuados, localPorTmdbId, mediaPorTmdbId));
+                paraDTO(atuados, localPorTmdbId, mediaPorTmdbId),
+                series(pessoa));
+    }
+
+    /** séries em que atuou, fora talk shows, jornais e realities; não entram no progresso nem nas conquistas */
+    private List<PersonCreditDTO> series(TmdbPersonDetailDTO pessoa) {
+        List<TmdbPersonCreditDTO> atuadas = new ArrayList<>();
+        for (TmdbPersonCreditDTO credito : pessoa.getTvCredits().getCast()) {
+            if (ehAparicaoComoSiMesmo(credito) || credito.getGenreIds().stream().anyMatch(GENEROS_FORA_DAS_SERIES::contains)) continue;
+            atuadas.add(credito);
+        }
+        atuadas = maisConhecidos(atuadas, MAX_CREDITOS);
+        if (atuadas.isEmpty()) return List.of();
+
+        Set<Long> tmdbIds = new LinkedHashSet<>();
+        atuadas.forEach(c -> tmdbIds.add(c.getId()));
+        Map<Long, Series> localPorTmdbId = new HashMap<>();
+        for (Series serie : seriesRepository.findByTmdbIdIn(tmdbIds)) {
+            localPorTmdbId.put(serie.getTmdbId(), serie);
+        }
+        Map<Long, Object[]> mediaPorTmdbId = new HashMap<>();
+        for (Object[] linha : seriesReviewRepository.findMediasPorTmdbId(tmdbIds)) {
+            mediaPorTmdbId.put((Long) linha[0], linha);
+        }
+
+        List<PersonCreditDTO> dtos = new ArrayList<>();
+        for (TmdbPersonCreditDTO credito : atuadas) {
+            Object[] media = mediaPorTmdbId.get(credito.getId());
+            dtos.add(new PersonCreditDTO(credito, localPorTmdbId.get(credito.getId()),
+                    media == null ? null : (Double) media[1],
+                    media == null ? 0 : (Long) media[2]));
+        }
+        return dtos;
     }
 
     /** direção e atuação como a página mostra: sem aparições como si mesmo, os mais conhecidos primeiro */
