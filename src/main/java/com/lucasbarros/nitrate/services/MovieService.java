@@ -19,12 +19,13 @@ import com.lucasbarros.nitrate.tmdb.dto.TmdbCrewMemberDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbMovieSummaryDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbWatchProvidersDTO;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Collator;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -33,7 +34,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -62,6 +65,9 @@ public class MovieService {
 
     @Autowired
     private PersonSlugService personSlugService;
+
+    @Autowired
+    private EntityManager entityManager;
 
     /** os filmes que mais gente registrou nos últimos dias; com pouca atividade recente, de todos os tempos */
     @Transactional(readOnly = true)
@@ -95,12 +101,25 @@ public class MovieService {
         return dtos;
     }
 
-    /** o catálogo em páginas, na ordem em que os filmes entraram no Nitrate */
+    /** o catálogo em páginas, com os filtros de gênero, década e notas; sem filtro, na ordem em que os filmes entraram */
     @Transactional(readOnly = true)
-    public PageDTO<MovieDTO> catalogo(int pagina, int tamanho) {
-        PageRequest pageRequest = PageRequest.of(Math.max(0, pagina), Math.min(Math.max(1, tamanho), CATALOGO_PAGINA_MAX),
-                Sort.by("id"));
-        return PageDTO.of(movieRepository.findAll(pageRequest), MovieDTO::new);
+    public PageDTO<MovieDTO> catalogo(int pagina, int tamanho, CatalogoFiltro filtro) {
+        int numero = Math.max(0, pagina);
+        int porPagina = Math.min(Math.max(1, tamanho), CATALOGO_PAGINA_MAX);
+        CatalogoConsulta.Pagina resultado = CatalogoConsulta.FILMES.buscar(entityManager, filtro, numero, porPagina);
+
+        Map<Long, Movie> porId = new HashMap<>();
+        movieRepository.findAllById(resultado.ids()).forEach(m -> porId.put(m.getId(), m));
+        List<MovieDTO> itens = resultado.ids().stream().map(porId::get).filter(Objects::nonNull).map(MovieDTO::new).toList();
+        int paginas = (int) Math.ceil((double) resultado.total() / porPagina);
+        return new PageDTO<>(itens, numero, porPagina, resultado.total(), paginas);
+    }
+
+    /** os gêneros que aparecem no catálogo, em ordem alfabética (para o filtro) */
+    @Transactional(readOnly = true)
+    public List<String> generos() {
+        Collator collator = Collator.getInstance(Locale.of("pt", "BR"));
+        return movieRepository.findNomesDeGeneros().stream().sorted(collator).toList();
     }
 
     @Transactional(readOnly = true)

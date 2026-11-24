@@ -19,6 +19,10 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
     boolean existsBySlug(String slug);
     List<Movie> findBySlugIsNull();
 
+    // filtro do catálogo: só os gêneros que algum filme tem
+    @Query("select distinct g.name from Movie m join m.genres g")
+    List<String> findNomesDeGeneros();
+
     @Query("select m.slug from Movie m where m.slug is not null")
     List<String> findAllSlugs();
     List<Movie> findByTmdbIdIn(Collection<Long> tmdbIds);

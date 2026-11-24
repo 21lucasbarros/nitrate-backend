@@ -2,6 +2,7 @@ package com.lucasbarros.nitrate.services;
 
 import com.lucasbarros.nitrate.dto.MovieBackdropsDTO;
 import com.lucasbarros.nitrate.dto.MovieStatsDTO;
+import com.lucasbarros.nitrate.dto.PageDTO;
 import com.lucasbarros.nitrate.dto.SeasonDTO;
 import com.lucasbarros.nitrate.dto.SeriesDTO;
 import com.lucasbarros.nitrate.dto.SeriesDetailsDTO;
@@ -19,11 +20,14 @@ import com.lucasbarros.nitrate.tmdb.dto.TmdbTvDetailDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbTvSeasonDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbTvSummaryDTO;
 import com.lucasbarros.nitrate.tmdb.dto.TmdbWatchProvidersDTO;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.text.Collator;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -32,6 +36,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -50,6 +55,10 @@ public class SeriesService {
     private static final int TERMO_MIN = 2;
     private static final int MAX_ELENCO = 30;
     private static final int LISTA_MAX = 18;
+    private static final int CATALOGO_PAGINA_MAX = 60;
+    private static final int COMUNIDADE_MAX = 12;
+    private static final int COMUNIDADE_MINIMO = 6; // menos que isso em alta: usa o histórico todo
+    private static final long EM_ALTA_DIAS = 30;
     private static final int SLUG_TAMANHO_MAX = 80;
     private static final String PAIS = "BR";
     private static final Duration VALIDADE_LISTAS = Duration.ofHours(6);
@@ -60,6 +69,7 @@ public class SeriesService {
     @Autowired private SeriesReviewRepository seriesReviewRepository;
     @Autowired private TmdbClient tmdbClient;
     @Autowired private PersonSlugService personSlugService;
+    @Autowired private EntityManager entityManager;
 
     // mesma ideia dos filmes: duas aberturas simultâneas da mesma série não importam em dobro
     private final ReentrantLock importacao = new ReentrantLock();
@@ -88,6 +98,43 @@ public class SeriesService {
 
     public List<SeriesSearchResultDTO> maisBemAvaliadas() {
         return lista("mais-bem-avaliadas", () -> tmdbClient.seriesMaisBemAvaliadas().getResults());
+    }
+
+    /** as séries que mais gente registrou nos últimos dias; com pouca atividade recente, de todos os tempos (como nos filmes) */
+    @Transactional(readOnly = true)
+    public List<SeriesSearchResultDTO> emAltaNaComunidade() {
+        PageRequest pagina = PageRequest.of(0, COMUNIDADE_MAX);
+        List<Object[]> linhas = seriesReviewRepository.findMaisRegistradas(
+                Instant.now().minus(Duration.ofDays(EM_ALTA_DIAS)), pagina);
+        if (linhas.size() < COMUNIDADE_MINIMO) {
+            linhas = seriesReviewRepository.findMaisRegistradas(Instant.EPOCH, pagina);
+        }
+        List<Long> ids = linhas.stream().map(l -> ((Number) l[0]).longValue()).toList();
+        Map<Long, Series> porId = new HashMap<>();
+        seriesRepository.findAllById(ids).forEach(s -> porId.put(s.getId(), s));
+        return ids.stream().map(porId::get).filter(Objects::nonNull).map(SeriesSearchResultDTO::new).toList();
+    }
+
+    /** as séries que já estão no Nitrate, em páginas, com os mesmos filtros do catálogo de filmes */
+    @Transactional(readOnly = true)
+    public PageDTO<SeriesSearchResultDTO> catalogo(int pagina, int tamanho, CatalogoFiltro filtro) {
+        int numero = Math.max(0, pagina);
+        int porPagina = Math.min(Math.max(1, tamanho), CATALOGO_PAGINA_MAX);
+        CatalogoConsulta.Pagina resultado = CatalogoConsulta.SERIES.buscar(entityManager, filtro, numero, porPagina);
+
+        Map<Long, Series> porId = new HashMap<>();
+        seriesRepository.findAllById(resultado.ids()).forEach(s -> porId.put(s.getId(), s));
+        List<SeriesSearchResultDTO> itens = resultado.ids().stream().map(porId::get).filter(Objects::nonNull)
+                .map(SeriesSearchResultDTO::new).toList();
+        int paginas = (int) Math.ceil((double) resultado.total() / porPagina);
+        return new PageDTO<>(itens, numero, porPagina, resultado.total(), paginas);
+    }
+
+    /** os gêneros que aparecem no catálogo de séries, em ordem alfabética (para o filtro) */
+    @Transactional(readOnly = true)
+    public List<String> generos() {
+        Collator collator = Collator.getInstance(Locale.of("pt", "BR"));
+        return seriesRepository.findNomesDeGeneros().stream().sorted(collator).toList();
     }
 
     private List<SeriesSearchResultDTO> lista(String chave, Supplier<List<TmdbTvSummaryDTO>> buscar) {

@@ -10,11 +10,19 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
 public interface SeriesReviewRepository extends JpaRepository<SeriesReview, Long> {
+
+    // descoberta pela comunidade, como nos filmes: as séries que mais gente registrou desde `desde`.
+    // Linhas: [Long seriesId, Long pessoas]
+    @Query("select r.series.id, count(distinct r.user) from SeriesReview r " +
+            "where r.createdAt >= :desde group by r.series.id order by count(distinct r.user) desc, r.series.id desc")
+    List<Object[]> findMaisRegistradas(@Param("desde") Instant desde, Pageable pageable);
+
     List<SeriesReview> findBySeriesOrderByCreatedAtDesc(Series series);
     List<SeriesReview> findByUserOrderByCreatedAtDesc(User user);
     List<SeriesReview> findByUserAndSeriesOrderByWatchedOnDescCreatedAtDesc(User user, Series series);

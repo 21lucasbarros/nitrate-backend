@@ -25,6 +25,12 @@ public record SeriesSearchResultDTO(
                 resumo.getVoteAverage());
     }
 
+    /** série que já está no Nitrate (catálogo filtrado) */
+    public SeriesSearchResultDTO(Series local) {
+        this(local.getId(), local.getSlug(), local.getTmdbId(), local.getName(), local.getFirstAirYear(),
+                local.getPosterPath(), local.getOverview(), local.getRating());
+    }
+
     /** "2008-01-20" → 2008; nulo se a data vier vazia */
     public static Integer ano(String data) {
         if (data == null || data.length() < 4) return null;

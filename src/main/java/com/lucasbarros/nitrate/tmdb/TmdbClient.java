@@ -229,6 +229,20 @@ public class TmdbClient {
                 .body(TmdbTvListResponseDTO.class);
     }
 
+    /** as séries com mais votos no TMDB (as mais conhecidas), 20 por página; base do catálogo de séries */
+    public TmdbTvListResponseDTO seriesMaisVotadas(int pagina) {
+        return restClient().get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/discover/tv")
+                        .queryParam("api_key", properties.getApiKey())
+                        .queryParam("language", "pt-BR")
+                        .queryParam("sort_by", "vote_count.desc")
+                        .queryParam("page", pagina)
+                        .build())
+                .retrieve()
+                .body(TmdbTvListResponseDTO.class);
+    }
+
     /** detalhes da série com o elenco de todas as temporadas */
     public TmdbTvDetailDTO buscarSerie(Long tmdbId) {
         return restClient().get()

@@ -2,6 +2,7 @@ package com.lucasbarros.nitrate.resources;
 
 import com.lucasbarros.nitrate.dto.MovieBackdropsDTO;
 import com.lucasbarros.nitrate.dto.MovieStatsDTO;
+import com.lucasbarros.nitrate.dto.PageDTO;
 import com.lucasbarros.nitrate.dto.ReviewCommentDTO;
 import com.lucasbarros.nitrate.dto.ReviewCommentRequestDTO;
 import com.lucasbarros.nitrate.dto.ReviewEngagementDTO;
@@ -16,6 +17,7 @@ import com.lucasbarros.nitrate.dto.SeriesReviewRequestDTO;
 import com.lucasbarros.nitrate.dto.SeriesSearchResultDTO;
 import com.lucasbarros.nitrate.dto.WatchProvidersDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
+import com.lucasbarros.nitrate.services.CatalogoFiltro;
 import com.lucasbarros.nitrate.services.SeriesDiaryService;
 import com.lucasbarros.nitrate.services.SeriesReviewCollaborationService;
 import com.lucasbarros.nitrate.services.SeriesService;
@@ -47,6 +49,28 @@ public class SeriesResource {
     @GetMapping("/trending")
     public List<SeriesSearchResultDTO> emAlta() {
         return seriesService.emAlta();
+    }
+
+    // descoberta pela comunidade, como em /movies/community/trending
+    @GetMapping("/community/trending")
+    public List<SeriesSearchResultDTO> emAltaNaComunidade() {
+        return seriesService.emAltaNaComunidade();
+    }
+
+    @GetMapping("/catalog")
+    public PageDTO<SeriesSearchResultDTO> catalogo(@RequestParam(defaultValue = "0") int page,
+                                                   @RequestParam(defaultValue = "48") int size,
+                                                   @RequestParam(required = false) List<String> genre,
+                                                   @RequestParam(required = false) Integer decade,
+                                                   @RequestParam(required = false) Double minTmdb,
+                                                   @RequestParam(required = false) Double minNitrate,
+                                                   @RequestParam(required = false) String sort) {
+        return seriesService.catalogo(page, size, CatalogoFiltro.de(genre, decade, minTmdb, minNitrate, sort));
+    }
+
+    @GetMapping("/genres")
+    public List<String> generos() {
+        return seriesService.generos();
     }
 
     @GetMapping("/top-rated")

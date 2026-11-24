@@ -19,6 +19,10 @@ public interface SeriesRepository extends JpaRepository<Series, Long> {
     boolean existsBySlug(String slug);
     List<Series> findByTmdbIdIn(Collection<Long> tmdbIds);
 
+    // filtro do catálogo: só os gêneros que alguma série tem
+    @Query("select distinct g from Series s join s.genres g")
+    List<String> findNomesDeGeneros();
+
     // Radar de Estreias: séries que alguém tem na watchlist ou já registrou e que ainda podem ter
     // novidade: não estrearam (ou nunca foram verificadas e podem ter estreado há pouco) ou
     // seguem no ar e podem ganhar temporada nova. As verificadas há mais tempo vêm primeiro
