@@ -36,7 +36,8 @@ public class UserProfileDTO {
     // fundo escolhido para o topo do perfil; nulo = o front usa a cena do primeiro favorito
     private Cover cover;
 
-    public record Cover(String path, Long tmdbId, String title, Integer year) {}
+    // x e y: o enquadramento, de 0 a 100; nulos = o padrão do front
+    public record Cover(String path, Long tmdbId, String title, Integer year, Integer x, Integer y) {}
 
     public UserProfileDTO(User user, long filmsCount, long reviewsCount, long likesCount, long watchlistCount,
                           long followersCount, long followingCount, List<MovieDTO> favorites, Boolean followedByMe,
@@ -61,7 +62,8 @@ public class UserProfileDTO {
         this.admin = admin;
         this.email = email;
         this.cover = user.getCoverPath() == null ? null
-                : new Cover(user.getCoverPath(), user.getCoverTmdbId(), user.getCoverTitle(), user.getCoverYear());
+                : new Cover(user.getCoverPath(), user.getCoverTmdbId(), user.getCoverTitle(), user.getCoverYear(),
+                        user.getCoverX(), user.getCoverY());
     }
 
     public String getUsername() { return username; }

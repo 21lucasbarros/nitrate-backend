@@ -101,7 +101,14 @@ public class ProfileCoverService {
         salvo.setCoverTmdbId(cenas.tmdbId());
         salvo.setCoverTitle(cenas.title().length() > 300 ? cenas.title().substring(0, 300) : cenas.title());
         salvo.setCoverYear(cenas.year());
+        salvo.setCoverX(enquadramento(dados.x()));
+        salvo.setCoverY(enquadramento(dados.y()));
         return userService.perfil(userRepository.save(salvo));
+    }
+
+    /** de 0 a 100; nulo continua nulo (o front usa o padrão) */
+    private static Integer enquadramento(Integer valor) {
+        return valor == null ? null : Math.clamp(valor, 0, 100);
     }
 
     /** volta para a cena do primeiro filme favorito */
@@ -112,6 +119,8 @@ public class ProfileCoverService {
         salvo.setCoverTmdbId(null);
         salvo.setCoverTitle(null);
         salvo.setCoverYear(null);
+        salvo.setCoverX(null);
+        salvo.setCoverY(null);
         return userService.perfil(userRepository.save(salvo));
     }
 }

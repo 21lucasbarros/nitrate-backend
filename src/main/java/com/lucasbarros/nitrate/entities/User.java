@@ -61,6 +61,9 @@ public class User implements Serializable {
     @Column(length = 300)
     private String coverTitle;
     private Integer coverYear;
+    // enquadramento da cena, de 0 a 100 (o object-position do CSS); nulo = o padrão do front
+    private Integer coverX;
+    private Integer coverY;
 
     public User() {
     }
@@ -122,6 +125,12 @@ public class User implements Serializable {
 
     public Integer getCoverYear() { return coverYear; }
     public void setCoverYear(Integer coverYear) { this.coverYear = coverYear; }
+
+    public Integer getCoverX() { return coverX; }
+    public void setCoverX(Integer coverX) { this.coverX = coverX; }
+
+    public Integer getCoverY() { return coverY; }
+    public void setCoverY(Integer coverY) { this.coverY = coverY; }
 
     /** caminho da foto na API, com a versão na URL para o cache; nulo sem foto */
     public String getAvatarPath() {
