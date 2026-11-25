@@ -39,8 +39,6 @@ public class TasteMatcher {
     // cada gênero do filme fora do que a resposta pede custa isto: "comédia romântica" pura vem
     // antes de um drama de três horas que também tem romance
     private static final double PUREZA = 0.72;
-    // fora da época escolhida o filme ainda aparece, só que bem atrás
-    private static final double FORA_DA_EPOCA = 0.35;
     // quanto os registros no Nitrate pesam: ajuda a mostrar filmes conhecidos, sem passar por cima
     // da relevância (com peso 1, um filme muito registrado valia 4x um que combina mais)
     private static final double PESO_POPULARIDADE = 0.25;
@@ -61,13 +59,12 @@ public class TasteMatcher {
     private volatile Instant popularidadeEm = Instant.EPOCH;
 
     /** respostas já validadas (só ids que existem no questionário) */
-    public record Preferencias(Set<String> genres, Set<String> answers, Set<String> eras) {
+    public record Preferencias(Set<String> genres, Set<String> answers) {
 
-        public static Preferencias de(Collection<String> genres, Collection<String> answers, Collection<String> eras) {
+        public static Preferencias de(Collection<String> genres, Collection<String> answers) {
             return new Preferencias(
                     validos(genres, TasteQuiz.GENERO_POR_ID.keySet()),
-                    validos(answers, TasteQuiz.OPCAO_POR_ID.keySet()),
-                    validos(eras, TasteQuiz.EPOCA_POR_ID.keySet()));
+                    validos(answers, TasteQuiz.OPCAO_POR_ID.keySet()));
         }
 
         public boolean vazia() {
@@ -216,7 +213,7 @@ public class TasteMatcher {
     }
 
     /**
-     * Pureza (gêneros fora de `pedidos` custam pontos; nulo = sem pureza), época, nota do TMDB e
+     * Pureza (gêneros fora de `pedidos` custam pontos; nulo = sem pureza), nota do TMDB e
      * registros no Nitrate. A grade precisa de filmes que a pessoa provavelmente viu e que sejam
      * mesmo do tipo que ela escolheu.
      */
@@ -225,10 +222,6 @@ public class TasteMatcher {
         if (pedidos != null) {
             long fora = TasteQuiz.generosDe(filme).stream().filter(g -> !pedidos.contains(g)).count();
             pontos *= Math.pow(PUREZA, fora);
-        }
-        if (!prefs.eras().isEmpty()
-                && prefs.eras().stream().noneMatch(e -> TasteQuiz.EPOCA_POR_ID.get(e).aceita(filme.getReleaseYear()))) {
-            pontos *= FORA_DA_EPOCA;
         }
         // sem título em português (só "愛のぬくもり"), quase ninguém aqui viu: a grade precisa de conhecidos
         if (filme.getTitle() != null && !LETRA_LATINA.matcher(filme.getTitle()).find()) {

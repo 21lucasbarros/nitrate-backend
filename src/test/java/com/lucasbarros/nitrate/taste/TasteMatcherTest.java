@@ -55,8 +55,8 @@ class TasteMatcherTest {
         return g;
     }
 
-    private Preferencias prefs(List<String> generos, List<String> respostas, List<String> epocas) {
-        return Preferencias.de(generos, respostas, epocas);
+    private Preferencias prefs(List<String> generos, List<String> respostas) {
+        return Preferencias.de(generos, respostas);
     }
 
     @Test
@@ -87,10 +87,9 @@ class TasteMatcherTest {
 
     @Test
     void idsDesconhecidosSaoIgnorados() {
-        Preferencias p = prefs(List.of("ROMANCE", "NAO_EXISTE"), List.of("INVENTADA"), List.of("RECENTES", "x"));
+        Preferencias p = prefs(List.of("ROMANCE", "NAO_EXISTE"), List.of("INVENTADA"));
         assertEquals(Set.of("ROMANCE"), p.genres());
         assertTrue(p.answers().isEmpty());
-        assertEquals(Set.of("RECENTES"), p.eras());
     }
 
     @Test
@@ -102,7 +101,7 @@ class TasteMatcherTest {
         lenient().when(reviewRepository.countPorFilme()).thenReturn(List.of());
 
         List<Movie> grade = matcher.melhores(
-                prefs(List.of("ROMANCE"), List.of("ROMANCE_COMEDIA"), List.of()),
+                prefs(List.of("ROMANCE"), List.of("ROMANCE_COMEDIA")),
                 List.of(drama, terror, comRom), Set.of(), 10);
 
         assertEquals(List.of(comRom), grade);
@@ -117,7 +116,7 @@ class TasteMatcherTest {
         lenient().when(reviewRepository.countPorFilme()).thenReturn(List.of());
 
         List<TasteMatcher.Grupo> grupos = matcher.grupos(
-                prefs(List.of("COMEDIA", "ROMANCE"), List.of("COMEDIA_ROMANTICA"), List.of()),
+                prefs(List.of("COMEDIA", "ROMANCE"), List.of("COMEDIA_ROMANTICA")),
                 List.of(comRom, drama, acao), Set.of(), 10);
 
         assertEquals(List.of("Comédia romântica", "Romance"), grupos.stream().map(TasteMatcher.Grupo::label).toList());
@@ -141,7 +140,7 @@ class TasteMatcherTest {
         lenient().when(reviewRepository.countPorFilme()).thenReturn(List.of());
 
         List<Movie> grade = matcher.melhores(
-                prefs(List.of("COMEDIA"), List.of("COMEDIA_ROMANTICA"), List.of()), List.of(dramedia, pura), Set.of(), 10);
+                prefs(List.of("COMEDIA"), List.of("COMEDIA_ROMANTICA")), List.of(dramedia, pura), Set.of(), 10);
 
         assertEquals(List.of(pura, dramedia), grade);
     }
@@ -156,7 +155,7 @@ class TasteMatcherTest {
         lenient().when(reviewRepository.countPorFilme()).thenReturn(List.of());
 
         List<Movie> grade = matcher.melhores(
-                prefs(List.of(), List.of("TERROR_PSICOLOGICO", "ROMANCE_COMEDIA"), List.of()), filmes, Set.of(), 3);
+                prefs(List.of(), List.of("TERROR_PSICOLOGICO", "ROMANCE_COMEDIA")), filmes, Set.of(), 3);
 
         assertEquals(3, grade.size());
         assertTrue(grade.contains(comRom));
@@ -168,21 +167,9 @@ class TasteMatcherTest {
         for (int i = 0; i < 5; i++) filmes.add(filme("Nolan " + i, 2010, 8.5, "Christopher Nolan", "Ficção científica", "Ação"));
         lenient().when(reviewRepository.countPorFilme()).thenReturn(List.of());
 
-        List<Movie> grade = matcher.melhores(prefs(List.of(), List.of("FICCAO_ACAO"), List.of()), filmes, Set.of(), 10);
+        List<Movie> grade = matcher.melhores(prefs(List.of(), List.of("FICCAO_ACAO")), filmes, Set.of(), 10);
 
         assertEquals(2, grade.size());
-    }
-
-    @Test
-    void foraDaEpocaFicaAtras() {
-        Movie classico = filme("Casablanca", 1942, 8.5, null, "Drama", "Romance");
-        Movie recente = filme("Vidas Passadas", 2023, 7.8, null, "Drama", "Romance");
-        lenient().when(reviewRepository.countPorFilme()).thenReturn(List.of());
-
-        List<Movie> grade = matcher.melhores(
-                prefs(List.of("ROMANCE"), List.of(), List.of("RECENTES")), List.of(classico, recente), Set.of(), 10);
-
-        assertEquals(List.of(recente, classico), grade);
     }
 
     @Test
@@ -191,7 +178,7 @@ class TasteMatcherTest {
         Movie conhecido = filme("Antes do Amanhecer", 1995, 7.0, null, "Romance", "Drama");
         lenient().when(reviewRepository.countPorFilme()).thenReturn(List.of());
 
-        List<Movie> grade = matcher.melhores(prefs(List.of("ROMANCE"), List.of(), List.of()),
+        List<Movie> grade = matcher.melhores(prefs(List.of("ROMANCE"), List.of()),
                 List.of(japones, conhecido), Set.of(), 10);
 
         assertEquals(List.of(conhecido, japones), grade);
@@ -210,7 +197,7 @@ class TasteMatcherTest {
                 .thenAnswer(chamada -> chamada.getArgument(0) == laLaLand);
         lenient().when(reviewRepository.countPorFilme()).thenReturn(List.of());
 
-        List<Movie> grade = matcher.melhores(prefs(List.of("MUSICA"), List.of(), List.of()),
+        List<Movie> grade = matcher.melhores(prefs(List.of("MUSICA"), List.of()),
                 List.of(bohemian, laLaLand), Set.of(), 10);
 
         assertEquals(List.of(laLaLand), grade);
@@ -221,7 +208,7 @@ class TasteMatcherTest {
         Movie bohemian = filme("Bohemian Rhapsody", 2018, 8.0, null, "Música", "Drama", "História");
         lenient().when(reviewRepository.countPorFilme()).thenReturn(List.of());
 
-        List<Movie> grade = matcher.melhores(prefs(List.of("MUSICA"), List.of(), List.of()),
+        List<Movie> grade = matcher.melhores(prefs(List.of("MUSICA"), List.of()),
                 List.of(bohemian), Set.of(), 10);
 
         assertEquals(List.of(bohemian), grade);
@@ -240,7 +227,7 @@ class TasteMatcherTest {
     @Test
     void motivosDizemQualRespostaCombinou() {
         Movie comRom = filme("Simplesmente Amor", 2003, 7.6, null, "Comédia", "Romance");
-        Preferencias p = prefs(List.of("ROMANCE", "COMEDIA"), List.of("ROMANCE_COMEDIA"), List.of());
+        Preferencias p = prefs(List.of("ROMANCE", "COMEDIA"), List.of("ROMANCE_COMEDIA"));
 
         assertEquals(List.of("comédia romântica"), matcher.motivos(p, comRom));
     }

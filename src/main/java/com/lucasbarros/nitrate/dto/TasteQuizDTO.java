@@ -5,7 +5,7 @@ import com.lucasbarros.nitrate.taste.TasteQuiz;
 import java.util.List;
 
 /** GET /taste/quiz: o questionário do onboarding, sem os filtros internos de cada resposta */
-public record TasteQuizDTO(List<Item> genres, List<Question> questions, List<Item> eras) {
+public record TasteQuizDTO(List<Item> genres, List<Question> questions) {
 
     public record Item(String id, String label) {
     }
@@ -23,7 +23,6 @@ public record TasteQuizDTO(List<Item> genres, List<Question> questions, List<Ite
                 TasteQuiz.PERGUNTAS.stream()
                         .map(p -> new Question(p.id(), p.genre(), p.title(),
                                 p.options().stream().map(o -> new Option(o.id(), o.label(), o.hint())).toList()))
-                        .toList(),
-                TasteQuiz.EPOCAS.stream().map(e -> new Item(e.id(), e.label())).toList());
+                        .toList());
     }
 }

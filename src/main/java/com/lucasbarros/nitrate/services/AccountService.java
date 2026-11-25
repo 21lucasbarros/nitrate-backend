@@ -11,6 +11,7 @@ import com.lucasbarros.nitrate.entities.Follow;
 import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.Series;
 import com.lucasbarros.nitrate.entities.User;
+import com.lucasbarros.nitrate.repositories.DismissedRecommendationRepository;
 import com.lucasbarros.nitrate.repositories.FavoriteFilmRepository;
 import com.lucasbarros.nitrate.repositories.FavoritePersonRepository;
 import com.lucasbarros.nitrate.repositories.FollowRepository;
@@ -75,6 +76,7 @@ public class AccountService {
     @Autowired private UserBadgeRepository userBadgeRepository;
     @Autowired private UserAchievementRepository userAchievementRepository;
     @Autowired private TasteProfileRepository tasteProfileRepository;
+    @Autowired private DismissedRecommendationRepository dismissedRecommendationRepository;
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private ReviewCollaborationRepository reviewCollaborationRepository;
     @Autowired private SeriesReviewCollaborationRepository seriesReviewCollaborationRepository;
@@ -267,6 +269,7 @@ public class AccountService {
         favoriteFilmRepository.deleteAllByUser(salvo);
         favoritePersonRepository.deleteAllByUser(salvo);
         watchlistRepository.deleteAllByUser(salvo);
+        dismissedRecommendationRepository.deleteAllByUser(salvo);
         reviewRepository.deleteAllByUser(salvo);
         seriesWatchlistRepository.deleteAllByUser(salvo);
         // antes dos registros de séries: curtidas e comentários apontam para eles

@@ -52,7 +52,7 @@ public class TasteService {
     /** filmes do acervo para a pessoa marcar os que já viu e gostou, conforme as respostas */
     @Transactional(readOnly = true)
     public List<TasteCandidateGroupDTO> candidatos(User user, TasteRequestDTO request) {
-        Preferencias prefs = Preferencias.de(request.genres(), request.answers(), request.eras());
+        Preferencias prefs = Preferencias.de(request.genres(), request.answers());
         // o que ela já registrou no diário não precisa ser perguntado de novo
         Set<Long> registrados = reviewRepository.findByUserOrderByCreatedAtDesc(user).stream()
                 .map(Review::getMovie).map(Movie::getId).collect(Collectors.toSet());
@@ -70,7 +70,7 @@ public class TasteService {
     /** substitui as respostas inteiras; pular tudo também salva (vazio), para não perguntar de novo */
     @Transactional
     public TasteProfileDTO salvar(User user, TasteRequestDTO request) {
-        Preferencias prefs = Preferencias.de(request.genres(), request.answers(), request.eras());
+        Preferencias prefs = Preferencias.de(request.genres(), request.answers());
         TasteProfile perfil = tasteProfileRepository.findById(user.getId())
                 .orElseGet(() -> new TasteProfile(userRepository.getReferenceById(user.getId())));
 
@@ -78,8 +78,8 @@ public class TasteService {
         perfil.getGenres().addAll(prefs.genres());
         perfil.getAnswers().clear();
         perfil.getAnswers().addAll(prefs.answers());
+        // a época saiu do questionário: limpa a que tinha sido salva antes
         perfil.getEras().clear();
-        perfil.getEras().addAll(prefs.eras());
         perfil.getSeedMovieIds().clear();
         perfil.getSeedMovieIds().addAll(filmesValidos(request.movieIds()));
         perfil.setUpdatedAt(Instant.now());
@@ -104,6 +104,6 @@ public class TasteService {
         List<MovieDTO> filmes = perfil.getSeedMovieIds().stream()
                 .map(porId::get).filter(Objects::nonNull).map(MovieDTO::new).toList();
         return new TasteProfileDTO(List.copyOf(perfil.getGenres()), List.copyOf(perfil.getAnswers()),
-                List.copyOf(perfil.getEras()), filmes, perfil.getUpdatedAt());
+                filmes, perfil.getUpdatedAt());
     }
 }

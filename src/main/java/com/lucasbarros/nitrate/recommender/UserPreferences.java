@@ -7,9 +7,15 @@ import java.util.*;
 
 public class UserPreferences {
     private List<Movie> likedMovies = new ArrayList<>();
+    // quanto cada semente pesa (nota e quão recente); sem peso, vale 1
+    private Map<Movie, Double> seedWeights = new HashMap<>();
+    // nota baixa ou "não tenho interesse": o que se parece com eles perde pontos
+    private List<Movie> dislikedMovies = new ArrayList<>();
     private Set<String> favoriteDirectors = new HashSet<>();
     private Set<String> favoriteActors = new HashSet<>();
     private Map<ConnectionType, Double> connectionTypeMultipliers = new HashMap<>();
+    // na medição, as curtidas da própria pessoa não entram no "quem curtiu também curtiu"
+    private Long ignoredUserId;
 
     private static final double FAVORITE_BOOST = 1.6;
 
@@ -22,6 +28,17 @@ public class UserPreferences {
     public void addLikedMovie(Movie movie) {
         if (!likedMovies.contains(movie)) {
             likedMovies.add(movie);
+        }
+    }
+
+    public void addLikedMovie(Movie movie, double weight) {
+        addLikedMovie(movie);
+        seedWeights.put(movie, weight);
+    }
+
+    public void addDislikedMovie(Movie movie) {
+        if (!dislikedMovies.contains(movie)) {
+            dislikedMovies.add(movie);
         }
     }
 
@@ -39,6 +56,14 @@ public class UserPreferences {
 
     public List<Movie> getLikedMovies() {
         return likedMovies;
+    }
+
+    public double getSeedWeight(Movie movie) {
+        return seedWeights.getOrDefault(movie, 1.0);
+    }
+
+    public List<Movie> getDislikedMovies() {
+        return dislikedMovies;
     }
 
     public boolean isFavoriteDirector(String director) {
@@ -60,5 +85,13 @@ public class UserPreferences {
 
     public double getFavoriteBoost() {
         return FAVORITE_BOOST;
+    }
+
+    public Long getIgnoredUserId() {
+        return ignoredUserId;
+    }
+
+    public void setIgnoredUserId(Long ignoredUserId) {
+        this.ignoredUserId = ignoredUserId;
     }
 }

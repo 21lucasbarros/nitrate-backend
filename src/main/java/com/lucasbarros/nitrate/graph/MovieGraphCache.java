@@ -8,6 +8,7 @@ import com.lucasbarros.nitrate.entities.Movie;
 import com.lucasbarros.nitrate.entities.MovieCast;
 import com.lucasbarros.nitrate.entities.RoleType;
 import com.lucasbarros.nitrate.repositories.MovieRepository;
+import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,8 +36,14 @@ public class MovieGraphCache {
 
     private static final Duration VALIDADE = Duration.ofHours(6);
 
+    // mesma régua das sementes da recomendação: curtiu ou deu 3,5 para cima
+    private static final double NOTA_MINIMA_CURTIDA = 3.5;
+
     @Autowired
     private MovieRepository movieRepository;
+
+    @Autowired
+    private ReviewRepository reviewRepository;
 
     private volatile MovieGraph grafo;
     private volatile Instant montadoEm;
@@ -51,12 +58,18 @@ public class MovieGraphCache {
         if (atual != null && montadoEm.plus(VALIDADE).isAfter(Instant.now())) {
             return atual; // caminho comum: o grafo está pronto, ninguém espera a trava
         }
-        montagem.lock();
+        if (atual != null) {
+            // vencido mas existe: um pedido remonta e os outros seguem com o grafo antigo em vez de esperar
+            if (!montagem.tryLock()) return atual;
+        } else {
+            montagem.lock();
+        }
         try {
             if (grafo == null || montadoEm.plus(VALIDADE).isBefore(Instant.now())) {
                 List<Movie> acervo = carregarAcervo();
+                Map<Long, List<Long>> curtidas = carregarCurtidas();
                 montadoEm = Instant.now();
-                grafo = new MovieGraph(acervo);
+                grafo = new MovieGraph(acervo, curtidas);
             }
             return grafo;
         } finally {
@@ -115,6 +128,15 @@ public class MovieGraphCache {
     private static Franchise comId(Franchise franquia, Long id) { franquia.setId(id); return franquia; }
     private static Genre comId(Genre genero, Long id) { genero.setId(id); return genero; }
     private static Actor comId(Actor ator, Long id) { ator.setId(id); return ator; }
+
+    /** curtidas de todo mundo, para o "quem curtiu também curtiu": só pares de ids */
+    private Map<Long, List<Long>> carregarCurtidas() {
+        Map<Long, List<Long>> porUsuario = new HashMap<>();
+        for (Object[] linha : reviewRepository.findCurtidasParaGrafo(NOTA_MINIMA_CURTIDA)) {
+            porUsuario.computeIfAbsent((Long) linha[0], k -> new ArrayList<>()).add((Long) linha[1]);
+        }
+        return porUsuario;
+    }
 
     /** chamar depois de importar filmes; o próximo obter() remonta o grafo */
     public void invalidar() {

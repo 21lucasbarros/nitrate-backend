@@ -189,6 +189,21 @@ public class UserResource {
         return recommendationService.recomendarParaUsuario(principal.getUser());
     }
 
+    // "não tenho interesse": o filme sai das recomendações e pesa contra os parecidos
+    @PostMapping("/me/recommendations/{movieId}/dismiss")
+    public ResponseEntity<Void> dispensarRecomendacao(@AuthenticationPrincipal CustomUserDetails principal,
+                                                      @PathVariable Long movieId) {
+        recommendationService.dispensar(principal.getUser(), movieId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/me/recommendations/{movieId}/dismiss")
+    public ResponseEntity<Void> desfazerDispensa(@AuthenticationPrincipal CustomUserDetails principal,
+                                                 @PathVariable Long movieId) {
+        recommendationService.desfazerDispensa(principal.getUser(), movieId);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/me/movies/{movieId}")
     public MovieUserStateDTO estadoDoFilme(@AuthenticationPrincipal CustomUserDetails principal,
                                            @PathVariable Long movieId) {

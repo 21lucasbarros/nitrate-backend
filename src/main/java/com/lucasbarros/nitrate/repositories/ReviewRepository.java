@@ -70,6 +70,20 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             "where (r.liked = true or r.rating >= :notaMinima) and r.movie.grafoExpandido = false")
     List<Long> findIdsDeSementesPendentes(@Param("notaMinima") double notaMinima);
 
+    // o diário de uma pessoa só com o que a recomendação usa (sem o texto das reviews).
+    // Linhas: [Long movieId, Double rating, Boolean liked, LocalDate watchedOn, Instant createdAt]
+    @Query("select r.movie.id, r.rating, r.liked, r.watchedOn, r.createdAt from Review r where r.user = :user")
+    List<Object[]> findRegistrosParaRecomendacao(@Param("user") User user);
+
+    // o mesmo para todo mundo, na medição da recomendação. Linhas: [Long userId, + as colunas acima]
+    @Query("select r.user.id, r.movie.id, r.rating, r.liked, r.watchedOn, r.createdAt from Review r")
+    List<Object[]> findTodosRegistrosParaRecomendacao();
+
+    // quem curtiu ou avaliou bem cada filme: o "quem curtiu X também curtiu Y" do grafo.
+    // Linhas: [Long userId, Long movieId]
+    @Query("select distinct r.user.id, r.movie.id from Review r where r.liked = true or r.rating >= :notaMinima")
+    List<Object[]> findCurtidasParaGrafo(@Param("notaMinima") double notaMinima);
+
     // gostos parecidos: para cada pessoa, quantos filmes ela avaliou em comum com `user`
     // e a diferença média entre as notas. Linhas: [User, Long filmesEmComum, Double diferencaMedia]
     @Query("select r2.user, count(distinct r2.movie), avg(abs(r1.rating - r2.rating)) " +

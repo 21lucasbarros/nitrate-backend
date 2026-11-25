@@ -40,6 +40,8 @@ public class TasteProfile implements Serializable {
     @Column(name = "answer", length = 40)
     private Set<String> answers = new HashSet<>();
 
+    // a época saiu do questionário e não é mais lida: fica mapeada só para o Hibernate apagar as
+    // linhas antigas junto com o perfil (a tabela tem chave estrangeira para ele)
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "tb_taste_era", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "era", length = 40)

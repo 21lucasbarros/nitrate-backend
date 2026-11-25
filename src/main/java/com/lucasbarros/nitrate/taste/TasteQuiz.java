@@ -14,8 +14,8 @@ import java.util.stream.Collectors;
 
 /**
  * O questionário de gostos do onboarding: gêneros, uma pergunta de "como" para os gêneros que têm
- * variações e a época. Cada resposta vira um filtro sobre o acervo (combinação de gêneros do TMDB e
- * ano), usado para montar a grade de filmes e para dar um empurrão nas recomendações.
+ * variações. Cada resposta vira um filtro sobre o acervo (combinação de gêneros do TMDB e ano),
+ * usado para montar a grade de filmes e para dar um empurrão nas recomendações.
  * Fica no backend para o site e o app mostrarem as mesmas perguntas.
  */
 public final class TasteQuiz {
@@ -83,13 +83,6 @@ public final class TasteQuiz {
     }
 
     public record Question(String id, String genre, String title, List<Option> options) {
-    }
-
-    public record Era(String id, String label, Integer anoDe, Integer anoAte) {
-        public boolean aceita(Integer ano) {
-            if (ano == null) return false;
-            return (anoDe == null || ano >= anoDe) && (anoAte == null || ano <= anoAte);
-        }
     }
 
     // nomes dos gêneros do TMDB em pt-BR, normalizados (minúsculas, sem acento)
@@ -248,14 +241,7 @@ public final class TasteQuiz {
                     opcao("MUSICA_DOCUMENTARIO", "Documentários e shows", "Bastidores, turnês e concertos", "documentários musicais",
                             todos(MUSICA, DOCUMENTARIO))));
 
-    public static final List<Era> EPOCAS = List.of(
-            new Era("CLASSICOS", "Clássicos", null, 1979),
-            new Era("ANOS_80_90", "Anos 80 e 90", 1980, 1999),
-            new Era("ANOS_2000_2010", "Anos 2000 e 2010", 2000, 2019),
-            new Era("RECENTES", "Lançamentos", 2020, null));
-
     public static final Map<String, GenreOption> GENERO_POR_ID = porId(GENEROS, GenreOption::id);
-    public static final Map<String, Era> EPOCA_POR_ID = porId(EPOCAS, Era::id);
     /** todas as respostas, na ordem do questionário */
     public static final List<Option> OPCOES = PERGUNTAS.stream().flatMap(p -> p.options().stream()).toList();
     public static final Map<String, Option> OPCAO_POR_ID = porId(OPCOES, Option::id);
