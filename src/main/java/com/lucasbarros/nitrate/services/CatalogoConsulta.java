@@ -86,11 +86,6 @@ record CatalogoConsulta(String entidade, String genero, String ano, String estre
             partes.add(genero.replace(":genero", ":genero" + i));
             parametros.put("genero" + i, filtro.generos().get(i));
         }
-        if (filtro.decada() != null) {
-            partes.add("t." + ano + " between :anoDe and :anoAte");
-            parametros.put("anoDe", filtro.decada());
-            parametros.put("anoAte", filtro.decada() + 9);
-        }
         if (filtro.notaTmdbMin() != null) {
             partes.add("t.rating >= :tmdb");
             parametros.put("tmdb", filtro.notaTmdbMin());
