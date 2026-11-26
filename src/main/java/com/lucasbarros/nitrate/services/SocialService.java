@@ -22,8 +22,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 /** Seguir pessoas, o feed de quem você segue e os filmes favoritos do perfil. */
 @Service
@@ -134,7 +136,17 @@ public class SocialService {
     @Transactional(readOnly = true)
     public List<MovieDTO> favoritos(User user) {
         List<MovieDTO> dtos = new ArrayList<>();
-        favoriteFilmRepository.findByUserOrderByPositionAsc(user).forEach(f -> dtos.add(new MovieDTO(f.getMovie())));
+        List<FavoriteFilm> favoritos = favoriteFilmRepository.findByUserOrderByPositionAsc(user);
+        if (favoritos.isEmpty()) return dtos;
+        // o pôster que a pessoa escolheu nas reviews também vale nos favoritos dela
+        Map<Long, String> posteres = new HashMap<>();
+        reviewRepository.findPosteresEscolhidos(user).forEach(l -> posteres.put((Long) l[0], (String) l[1]));
+        for (FavoriteFilm f : favoritos) {
+            MovieDTO dto = new MovieDTO(f.getMovie());
+            String poster = posteres.get(f.getMovie().getId());
+            if (poster != null) dto.setPosterPath(poster);
+            dtos.add(dto);
+        }
         return dtos;
     }
 

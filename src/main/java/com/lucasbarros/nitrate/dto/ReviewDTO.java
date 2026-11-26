@@ -11,6 +11,7 @@ import java.util.List;
 public class ReviewDTO {
     private Long id;
     private MovieDTO movie;
+    private boolean customPoster; // movie.posterPath é o pôster escolhido pela pessoa, e não o do filme
     private UserSummaryDTO user;
     private Double rating;
     private String text;
@@ -61,6 +62,9 @@ public class ReviewDTO {
     public ReviewDTO(Review entity) {
         id = entity.getId();
         movie = new MovieDTO(entity.getMovie());
+        // o pôster que a pessoa escolheu aparece no lugar do pôster do filme em tudo que mostra a review
+        customPoster = entity.getPosterPath() != null;
+        if (customPoster) movie.setPosterPath(entity.getPosterPath());
         user = new UserSummaryDTO(entity.getUser());
         rating = entity.getRating();
         text = entity.getText();
@@ -74,6 +78,7 @@ public class ReviewDTO {
 
     public Long getId() { return id; }
     public MovieDTO getMovie() { return movie; }
+    public boolean isCustomPoster() { return customPoster; }
     public UserSummaryDTO getUser() { return user; }
     public Double getRating() { return rating; }
     public String getText() { return text; }

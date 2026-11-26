@@ -18,6 +18,9 @@ public class ReviewRequestDTO {
     // Um texto só também vale (o formato antigo, de uma pessoa; vazio = ninguém)
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     private List<String> watchedWith;
+    // pôster escolhido entre os de GET /movies/{id}/posters, para todos os registros do filme.
+    // nulo = não muda (um registro novo segue o dos anteriores); vazio = volta ao pôster do filme
+    private String posterPath;
 
     public Long getMovieId() { return movieId; }
     public void setMovieId(Long movieId) { this.movieId = movieId; }
@@ -35,4 +38,6 @@ public class ReviewRequestDTO {
     public void setWatchedOn(LocalDate watchedOn) { this.watchedOn = watchedOn; }
     public List<String> getWatchedWith() { return watchedWith; }
     public void setWatchedWith(List<String> watchedWith) { this.watchedWith = watchedWith; }
+    public String getPosterPath() { return posterPath; }
+    public void setPosterPath(String posterPath) { this.posterPath = posterPath; }
 }

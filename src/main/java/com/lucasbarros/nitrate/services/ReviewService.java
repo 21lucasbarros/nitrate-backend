@@ -37,6 +37,7 @@ public class ReviewService {
     @Autowired private RecommendationService recommendationService;
     @Autowired private AchievementService achievementService;
     @Autowired private ReviewCollaborationService collaborationService;
+    @Autowired private PosterService posterService;
 
     @Transactional
     public ReviewDTO criar(User user, ReviewRequestDTO request) {
@@ -86,6 +87,7 @@ public class ReviewService {
         aplicar(review, request);
         if (jaAssistiu) review.setRewatch(true); // segunda review do mesmo filme é sempre reassistido
         review = reviewRepository.save(review);
+        definirPoster(review, request.getPosterPath());
 
         // assistiu, então sai da watchlist
         watchlistRepository.findByUserAndMovie(user, filme).ifPresent(watchlistRepository::delete);
@@ -138,6 +140,7 @@ public class ReviewService {
     public ReviewDTO atualizar(User user, Long id, ReviewRequestDTO request) {
         Review review = buscarDoUsuario(user, id);
         aplicar(review, request);
+        definirPoster(review, request.getPosterPath());
         review.setUpdatedAt(Instant.now());
         collaborationService.definirConvites(user, review, request.getWatchedWith());
         collaborationService.aoAtualizar(review);
@@ -226,6 +229,23 @@ public class ReviewService {
         // sem texto não há o que esconder
         review.setSpoiler(texto != null && request.isSpoiler());
         review.setWatchedOn(assistidoEm);
+    }
+
+    /**
+     * O pôster vale para o filme no perfil, e não para um registro só: muda em todos os registros
+     * da pessoa daquele filme. Sem `caminho` (nulo), não muda, e um registro novo segue os anteriores.
+     */
+    private void definirPoster(Review review, String caminho) {
+        List<Review> registros = reviewRepository.findByUserAndMovieOrderByCreatedAtDesc(review.getUser(), review.getMovie());
+        String poster;
+        if (caminho == null) {
+            if (review.getPosterPath() != null) return;
+            poster = registros.stream().map(Review::getPosterPath).filter(p -> p != null).findFirst().orElse(null);
+        } else {
+            poster = posterService.conferirFilme(review.getMovie(), caminho);
+        }
+        review.setPosterPath(poster);
+        registros.forEach(r -> r.setPosterPath(poster));
     }
 
     private List<ReviewDTO> paraDTO(List<Review> reviews) {

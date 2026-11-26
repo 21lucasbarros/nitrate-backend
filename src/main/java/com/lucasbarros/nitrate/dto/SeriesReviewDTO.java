@@ -11,7 +11,8 @@ import java.util.List;
 
 public record SeriesReviewDTO(
         Long id,
-        SeriesDTO series,
+        SeriesDTO series, // com o pôster escolhido pela pessoa no lugar do da série, quando houver
+        boolean customPoster,
         UserSummaryDTO user,
         Integer seasonNumber, // nulo = a série inteira
         Integer episodeNumber, // nulo = a temporada inteira
@@ -25,7 +26,8 @@ public record SeriesReviewDTO(
         ReviewDTO.Together together) { // registro em conjunto, no mesmo formato das reviews de filme
 
     public SeriesReviewDTO(SeriesReview r) {
-        this(r.getId(), new SeriesDTO(r.getSeries()), new UserSummaryDTO(r.getUser()), r.getSeasonNumber(),
+        this(r.getId(), new SeriesDTO(r.getSeries()).comPoster(r.getPosterPath()), r.getPosterPath() != null,
+                new UserSummaryDTO(r.getUser()), r.getSeasonNumber(),
                 r.getEpisodeNumber(), r.getRating(), r.getText(), r.isLiked(), r.isSpoiler(), r.isRewatch(),
                 r.getWatchedOn(), r.getCreatedAt(), together(r));
     }

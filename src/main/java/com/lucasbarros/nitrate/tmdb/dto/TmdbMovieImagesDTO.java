@@ -6,13 +6,16 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.List;
 
-/** imagens de um filme no TMDB (append_to_response=images); por enquanto só as cenas (backdrops) */
+/** imagens de um filme no TMDB (append_to_response=images): as cenas (backdrops) e os pôsteres */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TmdbMovieImagesDTO {
     private List<Image> backdrops = new ArrayList<>();
+    private List<Image> posters = new ArrayList<>();
 
     public List<Image> getBackdrops() { return backdrops; }
     public void setBackdrops(List<Image> backdrops) { this.backdrops = backdrops; }
+    public List<Image> getPosters() { return posters; }
+    public void setPosters(List<Image> posters) { this.posters = posters; }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Image {

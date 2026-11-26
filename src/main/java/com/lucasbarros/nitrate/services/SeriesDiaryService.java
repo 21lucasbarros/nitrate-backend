@@ -39,6 +39,7 @@ public class SeriesDiaryService {
     @Autowired private SeriesWatchlistRepository seriesWatchlistRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private SeriesService seriesService;
+    @Autowired private PosterService posterService;
     @Autowired private SeriesReviewSocialService seriesReviewSocialService;
     @Autowired private SeriesReviewCollaborationService collaborationService;
 
@@ -65,10 +66,10 @@ public class SeriesDiaryService {
         SeriesReviewRequestDTO dados = compartilhada
                 ? new SeriesReviewRequestDTO(null, original.getSeasonNumber(), original.getEpisodeNumber(),
                         original.getRating(), original.getText(), original.isLiked(), original.isSpoiler(), false,
-                        original.getWatchedOn(), null)
+                        original.getWatchedOn(), null, null)
                 : new SeriesReviewRequestDTO(null, original.getSeasonNumber(), original.getEpisodeNumber(),
                         request.rating(), request.text(), request.liked(), request.spoiler(), request.rewatch(),
-                        request.watchedOn(), null);
+                        request.watchedOn(), null, request.posterPath());
 
         SeriesReview review = registrar(user, original.getSeries(), dados);
         collaborationService.concluirAceite(c, review, compartilhada);
@@ -82,6 +83,7 @@ public class SeriesDiaryService {
         // como nos filmes: registrar de novo a mesma série, temporada ou episódio é sempre reassistido
         if (jaRegistrou(user, serie, review.getSeasonNumber(), review.getEpisodeNumber())) review.setRewatch(true);
         review = seriesReviewRepository.save(review);
+        definirPoster(review, request.posterPath());
 
         // terminou a série inteira: sai da watchlist
         if (review.getSeasonNumber() == null) {
@@ -109,6 +111,7 @@ public class SeriesDiaryService {
                     + "para trocar, alguém de vocês precisa apagar o próprio registro.");
         }
         aplicar(review, request);
+        definirPoster(review, request.posterPath());
         review.setUpdatedAt(Instant.now());
         collaborationService.definirConvites(user, review, request.watchedWith());
         collaborationService.aoAtualizar(review);
@@ -270,6 +273,24 @@ public class SeriesDiaryService {
         // sem texto não há o que esconder
         review.setSpoiler(texto != null && request.spoiler());
         review.setWatchedOn(assistidoEm);
+    }
+
+    /**
+     * Como nos filmes: o pôster vale para a série no perfil, em todos os registros da pessoa (série,
+     * temporadas e episódios). Sem `caminho` (nulo), não muda, e um registro novo segue os anteriores.
+     */
+    private void definirPoster(SeriesReview review, String caminho) {
+        List<SeriesReview> registros = seriesReviewRepository
+                .findByUserAndSeriesOrderByWatchedOnDescCreatedAtDesc(review.getUser(), review.getSeries());
+        String poster;
+        if (caminho == null) {
+            if (review.getPosterPath() != null) return;
+            poster = registros.stream().map(SeriesReview::getPosterPath).filter(Objects::nonNull).findFirst().orElse(null);
+        } else {
+            poster = posterService.conferirSerie(review.getSeries(), caminho);
+        }
+        review.setPosterPath(poster);
+        registros.forEach(r -> r.setPosterPath(poster));
     }
 
     private User buscarPorUsername(String username) {

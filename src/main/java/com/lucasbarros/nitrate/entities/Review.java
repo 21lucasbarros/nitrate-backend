@@ -45,6 +45,10 @@ public class Review implements Serializable {
 
     private LocalDate watchedOn;
 
+    // pôster escolhido pela pessoa entre os do TMDB, no lugar do pôster do filme nas reviews dela;
+    // nulo = o do filme. Igual em todos os registros dela do mesmo filme (ver ReviewService)
+    private String posterPath;
+
     // review em conjunto, em quem aceitou um convite: o convite que liga esta review à de quem
     // convidou (nula na review de quem convidou, que tem os convites em `invites`)
     @ManyToOne
@@ -94,6 +98,9 @@ public class Review implements Serializable {
 
     public LocalDate getWatchedOn() { return watchedOn; }
     public void setWatchedOn(LocalDate watchedOn) { this.watchedOn = watchedOn; }
+
+    public String getPosterPath() { return posterPath; }
+    public void setPosterPath(String posterPath) { this.posterPath = posterPath; }
 
     public ReviewCollaboration getCollaboration() { return collaboration; }
     public void setCollaboration(ReviewCollaboration collaboration) { this.collaboration = collaboration; }

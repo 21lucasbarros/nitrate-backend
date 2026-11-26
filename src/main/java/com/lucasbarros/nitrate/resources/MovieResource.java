@@ -3,6 +3,7 @@ package com.lucasbarros.nitrate.resources;
 import com.lucasbarros.nitrate.dto.MovieBackdropsDTO;
 import com.lucasbarros.nitrate.dto.MovieCreditsDTO;
 import com.lucasbarros.nitrate.dto.MovieDTO;
+import com.lucasbarros.nitrate.dto.PostersDTO;
 import com.lucasbarros.nitrate.dto.MovieSearchResultDTO;
 import com.lucasbarros.nitrate.dto.MovieStatsDTO;
 import com.lucasbarros.nitrate.dto.PageDTO;
@@ -10,6 +11,7 @@ import com.lucasbarros.nitrate.dto.WatchProvidersDTO;
 import com.lucasbarros.nitrate.dto.ReviewDTO;
 import com.lucasbarros.nitrate.services.CatalogoFiltro;
 import com.lucasbarros.nitrate.services.MovieService;
+import com.lucasbarros.nitrate.services.PosterService;
 import com.lucasbarros.nitrate.services.ProfileCoverService;
 import com.lucasbarros.nitrate.services.ReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +36,9 @@ public class MovieResource {
 
     @Autowired
     private ProfileCoverService profileCoverService;
+
+    @Autowired
+    private PosterService posterService;
 
     @GetMapping(value = "/catalog")
     public PageDTO<MovieDTO> catalogo(@RequestParam(defaultValue = "0") int page,
@@ -87,6 +92,12 @@ public class MovieResource {
     @GetMapping(value = "/tmdb/{tmdbId}/backdrops")
     public MovieBackdropsDTO cenas(@PathVariable Long tmdbId) {
         return profileCoverService.cenas(tmdbId);
+    }
+
+    /** pôsteres do filme no TMDB, para escolher o que aparece nas reviews de quem registrou */
+    @GetMapping(value = "/{id}/posters")
+    public PostersDTO posteres(@PathVariable Long id) {
+        return posterService.doFilme(id);
     }
 
     @GetMapping(value = "/slug/{slug}")

@@ -27,4 +27,11 @@ public record SeriesDTO(
                 s.getStatus(), s.getNumberOfSeasons(), s.getNumberOfEpisodes(), s.getRating(), s.getCreators(),
                 List.copyOf(s.getGenres()), s.getPosterPath(), s.getOverview(), s.jaEstreou());
     }
+
+    /** a mesma série com outro pôster (o escolhido pela pessoa num registro); nulo mantém o da série */
+    public SeriesDTO comPoster(String poster) {
+        if (poster == null) return this;
+        return new SeriesDTO(id, tmdbId, slug, name, firstAirYear, lastAirYear, status, numberOfSeasons,
+                numberOfEpisodes, rating, creators, genres, poster, overview, released);
+    }
 }

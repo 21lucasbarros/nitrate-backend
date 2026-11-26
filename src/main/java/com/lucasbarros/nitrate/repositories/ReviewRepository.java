@@ -44,6 +44,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     // atividade de uma pessoa com um filme: todos os registros dela
     List<Review> findByUserAndMovieOrderByCreatedAtDesc(User user, Movie movie);
     long countByUserAndMovie(User user, Movie movie);
+    // os pôsteres que a pessoa escolheu. Linhas: [Long movieId, String posterPath]
+    @Query("select distinct r.movie.id, r.posterPath from Review r where r.user = :user and r.posterPath is not null")
+    List<Object[]> findPosteresEscolhidos(@Param("user") User user);
 
     // filmes diferentes no diário (reassistir não conta duas vezes)
     @Query("select count(distinct r.movie) from Review r where r.user = :user")

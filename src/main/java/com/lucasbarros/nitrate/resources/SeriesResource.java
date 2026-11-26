@@ -3,6 +3,7 @@ package com.lucasbarros.nitrate.resources;
 import com.lucasbarros.nitrate.dto.MovieBackdropsDTO;
 import com.lucasbarros.nitrate.dto.MovieStatsDTO;
 import com.lucasbarros.nitrate.dto.PageDTO;
+import com.lucasbarros.nitrate.dto.PostersDTO;
 import com.lucasbarros.nitrate.dto.ReviewCommentDTO;
 import com.lucasbarros.nitrate.dto.ReviewCommentRequestDTO;
 import com.lucasbarros.nitrate.dto.ReviewEngagementDTO;
@@ -18,6 +19,7 @@ import com.lucasbarros.nitrate.dto.SeriesSearchResultDTO;
 import com.lucasbarros.nitrate.dto.WatchProvidersDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
 import com.lucasbarros.nitrate.services.CatalogoFiltro;
+import com.lucasbarros.nitrate.services.PosterService;
 import com.lucasbarros.nitrate.services.SeriesDiaryService;
 import com.lucasbarros.nitrate.services.SeriesReviewCollaborationService;
 import com.lucasbarros.nitrate.services.SeriesService;
@@ -38,6 +40,7 @@ public class SeriesResource {
     @Autowired private SeriesService seriesService;
     @Autowired private SeriesDiaryService seriesDiaryService;
     @Autowired private SeriesReviewSocialService seriesReviewSocialService;
+    @Autowired private PosterService posterService;
     @Autowired private SeriesReviewCollaborationService collaborationService;
 
     // literais têm prioridade sobre /{id}
@@ -107,6 +110,12 @@ public class SeriesResource {
     @GetMapping("/{id}/backdrops")
     public MovieBackdropsDTO cenas(@PathVariable Long id) {
         return seriesService.cenas(id);
+    }
+
+    // os pôsteres da série, para escolher o que aparece nos registros de quem assistiu
+    @GetMapping("/{id}/posters")
+    public PostersDTO posteres(@PathVariable Long id) {
+        return posterService.daSerie(id);
     }
 
     @GetMapping("/{id}/watch-providers")
