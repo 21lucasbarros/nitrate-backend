@@ -33,7 +33,6 @@ import com.lucasbarros.nitrate.repositories.UserBadgeRepository;
 import com.lucasbarros.nitrate.repositories.TasteProfileRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.repositories.WatchlistRepository;
-import com.lucasbarros.nitrate.security.CustomUserDetails;
 import com.lucasbarros.nitrate.security.JwtService;
 import com.lucasbarros.nitrate.security.RateLimiter;
 import com.lucasbarros.nitrate.services.exceptions.EmailJaCadastradoException;
@@ -123,7 +122,7 @@ public class AccountService {
         // o principal do token é uma cópia desanexada: atualiza a linha do banco
         User salvo = userRepository.findById(user.getId()).orElseThrow();
 
-        // trocar o @: mesmas regras do cadastro. O token guarda o e-mail, então a sessão continua valendo
+        // trocar o @: mesmas regras do cadastro. O token guarda o id da conta, então a sessão continua valendo
         if (dados.username() != null) {
             String username = dados.username().trim();
             if (!username.equals(salvo.getUsername())) {
@@ -163,20 +162,21 @@ public class AccountService {
         }
 
         salvo.setPasswordHash(passwordEncoder.encode(dados.newPassword()));
-        salvo.setPasswordChangedAt(Instant.now());
+        Instant agora = Instant.now();
+        salvo.setPasswordChangedAt(agora);
+        salvo.setSessionsRevokedAt(agora);
         userRepository.save(salvo);
         passwordResetTokenRepository.deleteAllByUser(salvo); // um link de redefinição pendente não vale mais
 
         emailService.enviarEmSegundoPlano(salvo.getEmail(), "Sua senha do Nitrate foi alterada",
                 avisoSenhaAlteradaHtml(salvo.getName()), avisoSenhaAlteradaTexto(salvo.getName()));
 
-        String token = jwtService.gerarToken(new CustomUserDetails(salvo), lembrar);
+        String token = jwtService.gerarToken(salvo, lembrar);
         return new AuthResponseDTO(token, salvo.getName(), salvo.getUsername(), salvo.getEmail());
     }
 
     /**
-     * Troca o e-mail sabendo a senha. O token guarda o e-mail, então as sessões abertas nos outros
-     * aparelhos caem sozinhas; devolve um token novo para este continuar conectado. O e-mail antigo
+     * Troca o e-mail sabendo a senha. Encerra as sessões abertas nos outros aparelhos e devolve um token novo para este continuar conectado. O e-mail antigo
      * recebe um aviso, a chance de recuperar a conta se não foi a própria pessoa. O token novo tem a
      * mesma duração do atual (`lembrar`).
      */
@@ -201,13 +201,14 @@ public class AccountService {
 
         String antigo = salvo.getEmail();
         salvo.setEmail(email);
+        salvo.setSessionsRevokedAt(Instant.now());
         userRepository.save(salvo);
         passwordResetTokenRepository.deleteAllByUser(salvo); // um link de redefinição enviado ao e-mail antigo não vale mais
 
         emailService.enviarEmSegundoPlano(antigo, "O e-mail da sua conta no Nitrate foi alterado",
                 avisoEmailAlteradoHtml(salvo.getName(), email), avisoEmailAlteradoTexto(salvo.getName(), email));
 
-        String token = jwtService.gerarToken(new CustomUserDetails(salvo), lembrar);
+        String token = jwtService.gerarToken(salvo, lembrar);
         return new AuthResponseDTO(token, salvo.getName(), salvo.getUsername(), salvo.getEmail());
     }
 

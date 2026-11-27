@@ -12,12 +12,16 @@ import com.lucasbarros.nitrate.repositories.NotificationRepository;
 import com.lucasbarros.nitrate.repositories.SeriesReviewCollaborationRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.services.exceptions.ConflictException;
+import com.lucasbarros.nitrate.security.CustomUserDetails;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -52,6 +56,17 @@ class SeriesReviewCollaborationServiceTest {
     private User bia;
     private User caio;
     private SeriesReview daAna;
+
+    // o DTO mostra os convites pendentes só para quem convidou: a conta logada da requisição
+    private static void logadoComo(User quem) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                new CustomUserDetails(quem), null, List.of()));
+    }
+
+    @AfterEach
+    void sair() {
+        SecurityContextHolder.clearContext();
+    }
 
     @BeforeEach
     void configura() {
@@ -148,9 +163,14 @@ class SeriesReviewCollaborationServiceTest {
         seguem(caio);
         service.definirConvites(ana, daAna, List.of("bia", "caio"));
 
+        logadoComo(ana);
         var daAnaDTO = new SeriesReviewDTO(daAna).together();
         assertTrue(daAnaDTO.invitedByMe());
         assertEquals(2, daAnaDTO.partners().size());
+
+        // vista por outra pessoa, só quem já aceitou
+        logadoComo(caio);
+        assertEquals(1, new SeriesReviewDTO(daAna).together().partners().size());
 
         var daBiaDTO = new SeriesReviewDTO(daBia.getInviteeReview()).together();
         assertFalse(daBiaDTO.invitedByMe());

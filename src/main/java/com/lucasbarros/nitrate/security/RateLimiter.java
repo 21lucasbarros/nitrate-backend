@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,6 +19,8 @@ public class RateLimiter {
 
     // acima disso, as janelas vencidas são descartadas antes de criar uma nova
     private static final int CHAVES_ANTES_DE_LIMPAR = 10_000;
+    // teto da memória: se nem descartando as vencidas o mapa voltar para baixo disso, saem as janelas mais antigas
+    private static final int CHAVES_MAX = 100_000;
 
     private record Janela(Instant inicio, Duration duracao, int contagem) {
         boolean vencida(Instant agora) {
@@ -52,6 +55,14 @@ public class RateLimiter {
         Instant agora = clock.instant();
         if (janelas.size() > CHAVES_ANTES_DE_LIMPAR) {
             janelas.values().removeIf(j -> j.vencida(agora));
+            if (janelas.size() > CHAVES_MAX) {
+                janelas.entrySet().stream()
+                        .sorted(Map.Entry.comparingByValue(Comparator.comparing(Janela::inicio)))
+                        .limit(janelas.size() - CHAVES_ANTES_DE_LIMPAR)
+                        .map(Map.Entry::getKey)
+                        .toList()
+                        .forEach(janelas::remove);
+            }
         }
         return janelas.compute(chave, (k, atual) -> atual == null || atual.vencida(agora)
                 ? new Janela(agora, janela, 1)
@@ -60,5 +71,10 @@ public class RateLimiter {
 
     public void zerar(String chave) {
         janelas.remove(chave);
+    }
+
+    /** zera todas as chaves que começam com `prefixo` (ex.: as falhas de login de uma conta, de todos os IPs) */
+    public void zerarPrefixo(String prefixo) {
+        janelas.keySet().removeIf(chave -> chave.startsWith(prefixo));
     }
 }

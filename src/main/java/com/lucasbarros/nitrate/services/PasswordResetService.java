@@ -84,12 +84,12 @@ public class PasswordResetService {
 
         User user = pedido.getUser();
         user.setPasswordHash(passwordEncoder.encode(novaSenha));
-        user.setPasswordChangedAt(agora); // derruba as sessões abertas
+        user.setPasswordChangedAt(agora);
+        user.setSessionsRevokedAt(agora); // derruba as sessões abertas
         userRepository.save(user);
         tokenRepository.deleteAllByUser(user);
         // quem estava bloqueado por senhas erradas volta a conseguir entrar com a nova
-        rateLimiter.zerar("login-falhas:" + user.getEmail().toLowerCase(Locale.ROOT));
-        rateLimiter.zerar("login-falhas:" + user.getUsername().toLowerCase(Locale.ROOT));
+        rateLimiter.zerarPrefixo(AuthService.chaveFalhas(user));
     }
 
     private static String gerarToken() {

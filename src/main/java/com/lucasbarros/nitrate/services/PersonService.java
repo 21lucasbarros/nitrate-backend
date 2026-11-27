@@ -192,7 +192,7 @@ public class PersonService {
             return emCache.pessoa();
         }
         TmdbPersonDetailDTO pessoa = tmdbClient.buscarPessoaComFilmografia(personId);
-        if (pessoa != null) cacheFilmografia.put(personId, new FilmografiaEmCache(pessoa, Instant.now()));
+        if (pessoa != null) CacheLimitado.guardar(cacheFilmografia, personId, new FilmografiaEmCache(pessoa, Instant.now()));
         return pessoa;
     }
 

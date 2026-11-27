@@ -1,16 +1,25 @@
 package com.lucasbarros.nitrate.security;
 
+import com.lucasbarros.nitrate.entities.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.UUID;
 
+/**
+ * O token de login. Identifica a conta pelo id, que nunca muda nem é reaproveitado: com o e-mail,
+ * um token antigo de um e-mail que foi trocado ou de uma conta excluída abriria a conta de quem se
+ * cadastrasse depois com aquele e-mail. Cada token tem um id próprio (jti), para o logout derrubar
+ * só ele (RevokedToken).
+ */
 @Component
 public class JwtService {
 
@@ -26,25 +35,53 @@ public class JwtService {
 
     private static final String CLAIM_LEMBRAR = "lembrar";
 
+    /** o que o token diz, depois de conferida a assinatura e a validade */
+    public record Sessao(Long userId, String id, Instant emitidoEm, Instant expiraEm, boolean lembrar) {}
+
     private SecretKey chave() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String gerarToken(UserDetails userDetails) {
-        return gerarToken(userDetails, false);
+    public String gerarToken(User user) {
+        return gerarToken(user, false);
     }
 
     /** com `lembrar`, o token dura rememberExpirationMs e leva a marca para ser renovado igual */
-    public String gerarToken(UserDetails userDetails, boolean lembrar) {
+    public String gerarToken(User user, boolean lembrar) {
         Date agora = new Date();
         Date expiracao = new Date(agora.getTime() + (lembrar ? rememberExpirationMs : expirationMs));
 
         var builder = Jwts.builder()
-                .subject(userDetails.getUsername()) // aqui "username" é o email
+                .subject(String.valueOf(user.getId()))
+                .id(UUID.randomUUID().toString())
                 .issuedAt(agora)
                 .expiration(expiracao);
         if (lembrar) builder.claim(CLAIM_LEMBRAR, true);
         return builder.signWith(chave()).compact();
+    }
+
+    /**
+     * Confere a assinatura e a validade (o parser recusa token vencido) e devolve o conteúdo.
+     * Tokens do formato antigo, com o e-mail no lugar do id, são recusados: quem tinha um
+     * entra de novo.
+     */
+    public Sessao ler(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(chave())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        Long userId;
+        try {
+            userId = Long.valueOf(claims.getSubject());
+        } catch (NumberFormatException e) {
+            throw new MalformedJwtException("token sem o id da conta");
+        }
+        if (claims.getId() == null || claims.getIssuedAt() == null || claims.getExpiration() == null) {
+            throw new MalformedJwtException("token incompleto");
+        }
+        return new Sessao(userId, claims.getId(), claims.getIssuedAt().toInstant(),
+                claims.getExpiration().toInstant(), Boolean.TRUE.equals(claims.get(CLAIM_LEMBRAR, Boolean.class)));
     }
 
     /**
@@ -53,53 +90,20 @@ public class JwtService {
      */
     public boolean lembrar(String token) {
         try {
-            return Boolean.TRUE.equals(Jwts.parser()
-                    .verifyWith(chave())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload()
-                    .get(CLAIM_LEMBRAR, Boolean.class));
+            return ler(token).lembrar();
         } catch (RuntimeException e) {
             return false;
         }
     }
 
-    public String extrairEmail(String token) {
-        return Jwts.parser()
-                .verifyWith(chave())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
-    }
-
-    public boolean tokenValido(String token, UserDetails userDetails) {
-        String email = extrairEmail(token);
-        return email.equals(userDetails.getUsername()) && !tokenExpirado(token) && !emitidoAntesDaTrocaDeSenha(token, userDetails);
-    }
-
-    /** trocar a senha (ex.: pela redefinição) derruba as sessões abertas em outros aparelhos */
-    private boolean emitidoAntesDaTrocaDeSenha(String token, UserDetails userDetails) {
-        if (!(userDetails instanceof CustomUserDetails detalhes)) return false;
-        Instant trocou = detalhes.getUser().getPasswordChangedAt();
-        if (trocou == null) return false;
-        Date emitido = Jwts.parser()
-                .verifyWith(chave())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getIssuedAt();
+    /**
+     * O token é desta conta e não foi emitido antes de as sessões dela serem encerradas
+     * (troca de senha, redefinição ou troca de e-mail).
+     */
+    public boolean valeParaConta(Sessao sessao, User user) {
+        if (!sessao.userId().equals(user.getId())) return false;
+        Instant encerradas = user.getSessionsRevokedAt();
         // o iat do JWT tem precisão de segundos: compara no mesmo nível
-        return emitido == null || emitido.toInstant().isBefore(trocou.truncatedTo(ChronoUnit.SECONDS));
-    }
-
-    private boolean tokenExpirado(String token) {
-        Date expiracao = Jwts.parser()
-                .verifyWith(chave())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getExpiration();
-        return expiracao.before(new Date());
+        return encerradas == null || !sessao.emitidoEm().isBefore(encerradas.truncatedTo(ChronoUnit.SECONDS));
     }
 }

@@ -42,6 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class RecommendationService {
+    private static final int PREFERENCIAS_MAX = 200; // por lista, no POST /recommendations
     private static final int TOP_N_PADRAO = 5;
     private static final int TOP_N_USUARIO = 12;
     private static final double NOTA_MINIMA_SEMENTE = 3.5;
@@ -381,6 +382,11 @@ public class RecommendationService {
     }
 
     public List<RecommendationResultDTO> recomendar(RecommendationRequestDTO request) {
+        // listas enormes fariam o motor percorrer o grafo a partir de cada item
+        if (tamanho(request.getLikedMovieIds()) > PREFERENCIAS_MAX || tamanho(request.getFavoriteDirectors()) > PREFERENCIAS_MAX
+                || tamanho(request.getFavoriteActors()) > PREFERENCIAS_MAX) {
+            throw new IllegalArgumentException("Envie no máximo " + PREFERENCIAS_MAX + " itens em cada lista");
+        }
         // o grafo vem do cache; os filmes curtidos precisam ser as mesmas instâncias que estão nele
         MovieGraph grafo = graphCache.obter();
 
@@ -394,6 +400,10 @@ public class RecommendationService {
             dtos.add(new RecommendationResultDTO(resultado));
         }
         return dtos;
+    }
+
+    private static int tamanho(List<?> lista) {
+        return lista == null ? 0 : lista.size();
     }
 
     private UserPreferences montarPreferencias(RecommendationRequestDTO request, MovieGraph grafo) {

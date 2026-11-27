@@ -131,7 +131,13 @@ curl -X POST http://localhost:8080/auth/login \
   }'
 ```
 
-A resposta possui o mesmo formato do cadastro. `login` aceita o e-mail ou o nome de usuário. Com `rememberMe: true` ("Lembrar de mim"), o token vale 30 dias (`JWT_REMEMBER_EXPIRATION_MS`), e não 24h; trocar a senha ou o e-mail devolve um token com a mesma duração do atual.
+A resposta possui o mesmo formato do cadastro. `login` aceita o e-mail ou o nome de usuário. Com `rememberMe: true` ("Lembrar de mim"), o token vale 30 dias (`JWT_REMEMBER_EXPIRATION_MS`), e não 24h; trocar a senha ou o e-mail devolve um token com a mesma duração do atual. O token identifica a conta pelo id; tokens do formato antigo (com o e-mail) são recusados.
+
+Senhas erradas: 10 em 15 minutos bloqueiam o login da conta a partir daquele IP, e 50 de IPs diferentes bloqueiam a conta inteira pelo mesmo tempo (`429`).
+
+### `POST /auth/logout`
+
+Encerra o token enviado no header `Authorization`: ele deixa de valer na hora, e não só quando vencer. Responde sempre `204`, mesmo sem token ou com um já vencido.
 
 ### `POST /auth/forgot-password`
 
@@ -157,7 +163,7 @@ curl -X POST http://localhost:8080/auth/reset-password \
 
 ### `PUT /users/me/profile`
 
-Edita o perfil: `name`, `username`, `bio`, `twitter` e `instagram`. O `username` segue as regras do cadastro (letras maiúsculas ou minúsculas, números e `_`; "Ana" e "ana" contam como o mesmo @) e responde `409` se já estiver em uso; se vier nulo, o @ atual é mantido. Trocar o @ não encerra a sessão, porque o token guarda o e-mail.
+Edita o perfil: `name`, `username`, `bio`, `twitter` e `instagram`. O `username` segue as regras do cadastro (letras maiúsculas ou minúsculas, números e `_`; "Ana" e "ana" contam como o mesmo @) e responde `409` se já estiver em uso; se vier nulo, o @ atual é mantido. Trocar o @ não encerra a sessão, porque o token guarda o id da conta.
 
 ### `PUT /users/me/password`
 
@@ -320,6 +326,7 @@ O Coolify constrói o `Dockerfile` da raiz. A imagem usa o perfil `prod` (`appli
 | `JWT_SECRET`           | segredo do JWT, com pelo menos 32 caracteres                                |
 | `CRON_SECRET`          | segredo do `/admin/**`, enviado pelas tarefas agendadas                     |
 | `CORS_ALLOWED_ORIGINS` | domínio(s) do front, ex.: `https://nitrate.com.br`                          |
+| `ADMIN_USER_IDS`       | ids das contas que abrem o painel de admin no site, separados por vírgula   |
 | `JWT_EXPIRATION_MS`    | opcional, padrão `86400000` (24h)                                           |
 | `JWT_REMEMBER_EXPIRATION_MS` | opcional, padrão `2592000000` (30 dias), com "Lembrar de mim" no login      |
 | `RESEND_API_KEY`       | chave do [Resend](https://resend.com), para os e-mails de redefinir a senha |

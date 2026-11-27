@@ -220,7 +220,7 @@ public class MovieService {
         String tagline = detalhe.getTagline() == null || detalhe.getTagline().isBlank() ? null : detalhe.getTagline();
         Integer duracao = detalhe.getRuntime() == null || detalhe.getRuntime() <= 0 ? null : detalhe.getRuntime();
         MovieCreditsDTO resultado = new MovieCreditsDTO(direcao, elenco, detalhe.getBackdropPath(), tagline, duracao);
-        cacheCreditos.put(filme.getTmdbId(), new CreditosEmCache(resultado, Instant.now()));
+        CacheLimitado.guardar(cacheCreditos, filme.getTmdbId(), new CreditosEmCache(resultado, Instant.now()));
         return resultado;
     }
 
@@ -283,7 +283,7 @@ public class MovieService {
                         provedores(concat(brasil.getFree(), brasil.getAds())),
                         provedores(brasil.getRent()),
                         provedores(brasil.getBuy()));
-        cacheProvedores.put(filme.getTmdbId(), new ProvedoresEmCache(resultado, Instant.now()));
+        CacheLimitado.guardar(cacheProvedores, filme.getTmdbId(), new ProvedoresEmCache(resultado, Instant.now()));
         return resultado;
     }
 

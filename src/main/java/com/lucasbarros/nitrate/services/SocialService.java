@@ -15,12 +15,15 @@ import com.lucasbarros.nitrate.repositories.MovieRepository;
 import com.lucasbarros.nitrate.repositories.NotificationRepository;
 import com.lucasbarros.nitrate.repositories.ReviewRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
+import com.lucasbarros.nitrate.security.RateLimiter;
 import com.lucasbarros.nitrate.services.exceptions.ResourceNotFoundException;
+import com.lucasbarros.nitrate.services.exceptions.TooManyRequestsException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -37,6 +40,9 @@ public class SocialService {
     private static final int BUSCA_TERMO_MAX = 50;
     private static final long PARECIDOS_MINIMO_EM_COMUM = 3;
     private static final int PARECIDOS_MAX = 8;
+    // seguir e deixar de seguir em loop mandaria uma notificação nova a cada vez
+    private static final int SEGUIR_MAX = 100;
+    private static final Duration JANELA_SEGUIR = Duration.ofHours(1);
 
     @Autowired private UserRepository userRepository;
     @Autowired private FollowRepository followRepository;
@@ -44,6 +50,7 @@ public class SocialService {
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private MovieRepository movieRepository;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private RateLimiter rateLimiter;
 
     // idempotente: seguir quem já segue não faz nada
     @Transactional
@@ -53,6 +60,9 @@ public class SocialService {
             throw new IllegalArgumentException("Você não pode seguir a si mesmo");
         }
         if (!followRepository.existsByFollowerAndFollowed(eu, alvo)) {
+            if (!rateLimiter.tentar("seguir:" + eu.getId(), SEGUIR_MAX, JANELA_SEGUIR)) {
+                throw new TooManyRequestsException("Você seguiu muita gente em pouco tempo. Espere um pouco e tente de novo.");
+            }
             followRepository.save(new Follow(eu, alvo));
             notificationRepository.save(Notification.follow(alvo, eu));
         }

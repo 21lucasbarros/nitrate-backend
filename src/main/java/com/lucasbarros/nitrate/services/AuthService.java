@@ -3,25 +3,29 @@ package com.lucasbarros.nitrate.services;
 import com.lucasbarros.nitrate.dto.AuthResponseDTO;
 import com.lucasbarros.nitrate.dto.LoginRequestDTO;
 import com.lucasbarros.nitrate.dto.RegisterRequestDTO;
+import com.lucasbarros.nitrate.entities.RevokedToken;
 import com.lucasbarros.nitrate.entities.User;
+import com.lucasbarros.nitrate.repositories.RevokedTokenRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
-import com.lucasbarros.nitrate.security.CustomUserDetails;
 import com.lucasbarros.nitrate.security.JwtService;
 import com.lucasbarros.nitrate.security.RateLimiter;
 import com.lucasbarros.nitrate.services.exceptions.EmailJaCadastradoException;
 import com.lucasbarros.nitrate.services.exceptions.TooManyRequestsException;
 import com.lucasbarros.nitrate.services.exceptions.UsernameJaCadastradoException;
+import io.jsonwebtoken.JwtException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -38,9 +42,12 @@ public class AuthService {
     private static final int SENHA_MAX_BYTES = 72; // o bcrypt ignora o que passar disso
     private static final int IDADE_MINIMA = 13; // igual aos Termos de Uso do front (MIN_AGE)
 
-    // força bruta numa conta: senhas erradas seguidas bloqueiam o login dela por um tempo,
-    // não importa de quantos IPs venham (o limite por IP fica no RateLimitFilter)
-    private static final int FALHAS_MAX = 10;
+    // força bruta numa conta: senhas erradas seguidas bloqueiam o login dela a partir daquele IP por
+    // um tempo. Bloquear a conta inteira deixaria qualquer um trancar a conta de outra pessoa errando
+    // a senha de propósito; o teto da conta, bem mais alto, segura quem tenta de muitos IPs
+    // (o limite geral por IP fica no RateLimitFilter)
+    private static final int FALHAS_MAX_POR_IP = 10;
+    private static final int FALHAS_MAX_CONTA = 50;
     private static final Duration JANELA_FALHAS = Duration.ofMinutes(15);
 
     @Autowired private UserRepository userRepository;
@@ -48,6 +55,7 @@ public class AuthService {
     @Autowired private JwtService jwtService;
     @Autowired private AuthenticationManager authenticationManager;
     @Autowired private RateLimiter rateLimiter;
+    @Autowired private RevokedTokenRepository revokedTokenRepository;
 
     public AuthResponseDTO registrar(RegisterRequestDTO request) {
         String nome = request.getName() == null ? "" : request.getName().trim();
@@ -83,31 +91,62 @@ public class AuthService {
         user.setTermsAcceptedAt(Instant.now());
         user = userRepository.save(user);
 
-        String token = jwtService.gerarToken(new CustomUserDetails(user));
+        String token = jwtService.gerarToken(user);
         return new AuthResponseDTO(token, user.getName(), user.getUsername(), user.getEmail());
     }
 
-    public AuthResponseDTO login(LoginRequestDTO request) {
+    public AuthResponseDTO login(LoginRequestDTO request, String ip) {
         String login = request.getLogin() == null ? "" : request.getLogin().trim();
-        String chaveFalhas = "login-falhas:" + login.toLowerCase(Locale.ROOT);
-        if (rateLimiter.esgotado(chaveFalhas, FALHAS_MAX)) {
+        Optional<User> encontrado = userRepository.findFirstByEmailIgnoreCase(login)
+                .or(() -> userRepository.findFirstByUsernameIgnoreCase(login));
+        // pela conta, e não pelo que foi digitado: o e-mail e o @ dividem as mesmas tentativas
+        String chaveConta = chaveFalhas(encontrado.map(u -> "u" + u.getId()).orElse("l" + login.toLowerCase(Locale.ROOT)));
+        String chaveIp = chaveConta + ip;
+        if (rateLimiter.esgotado(chaveIp, FALHAS_MAX_POR_IP) || rateLimiter.esgotado(chaveConta, FALHAS_MAX_CONTA)) {
             throw new TooManyRequestsException("Muitas tentativas de login nesta conta. Espere alguns minutos e tente de novo.");
         }
 
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(login, request.getPassword()));
         } catch (BadCredentialsException e) {
-            rateLimiter.registrar(chaveFalhas, JANELA_FALHAS);
+            rateLimiter.registrar(chaveIp, JANELA_FALHAS);
+            rateLimiter.registrar(chaveConta, JANELA_FALHAS);
             throw e;
         }
-        rateLimiter.zerar(chaveFalhas);
+        rateLimiter.zerar(chaveIp);
 
-        User user = userRepository.findFirstByEmailIgnoreCase(login)
-                .or(() -> userRepository.findFirstByUsernameIgnoreCase(login))
-                .orElseThrow();
-
-        String token = jwtService.gerarToken(new CustomUserDetails(user), Boolean.TRUE.equals(request.getRememberMe()));
+        User user = encontrado.orElseThrow();
+        String token = jwtService.gerarToken(user, Boolean.TRUE.equals(request.getRememberMe()));
         return new AuthResponseDTO(token, user.getName(), user.getUsername(), user.getEmail());
+    }
+
+    /** prefixo das falhas de login de uma conta (de todos os IPs); a redefinição de senha zera todas */
+    static String chaveFalhas(String conta) {
+        return "login-falhas:" + conta + ":";
+    }
+
+    static String chaveFalhas(User user) {
+        return chaveFalhas("u" + user.getId());
+    }
+
+    /**
+     * Logout: o token deixa de valer agora, e não só quando vencer. Token inválido ou já vencido
+     * não precisa de nada.
+     */
+    @Transactional
+    public void sair(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) return;
+        JwtService.Sessao sessao;
+        try {
+            sessao = jwtService.ler(authorization.substring(7));
+        } catch (JwtException | IllegalArgumentException e) {
+            return;
+        }
+        Instant agora = Instant.now();
+        revokedTokenRepository.deleteAllExpiredBefore(agora);
+        if (sessao.expiraEm().isAfter(agora)) {
+            revokedTokenRepository.save(new RevokedToken(sessao.id(), sessao.expiraEm()));
+        }
     }
 
     /** formato do @, também usado ao trocar o @ no perfil (AccountService) */

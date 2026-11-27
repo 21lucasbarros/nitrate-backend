@@ -11,12 +11,16 @@ import com.lucasbarros.nitrate.repositories.NotificationRepository;
 import com.lucasbarros.nitrate.repositories.ReviewCollaborationRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.services.exceptions.ConflictException;
+import com.lucasbarros.nitrate.security.CustomUserDetails;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Optional;
@@ -50,6 +54,17 @@ class ReviewCollaborationServiceTest {
     private User bia;
     private User caio;
     private Review daAna;
+
+    // o DTO mostra os convites pendentes só para quem convidou: a conta logada da requisição
+    private static void logadoComo(User quem) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                new CustomUserDetails(quem), null, List.of()));
+    }
+
+    @AfterEach
+    void sair() {
+        SecurityContextHolder.clearContext();
+    }
 
     @BeforeEach
     void configura() {
@@ -206,10 +221,17 @@ class ReviewCollaborationServiceTest {
         ReviewCollaboration daBia = aceita(bia, true);
         service.definirConvites(ana, daAna, List.of("bia", "caio")); // Caio ainda não respondeu
 
+        logadoComo(ana);
         ReviewDTO.Together vistoPelaAna = new ReviewDTO(daAna).getTogether();
         assertTrue(vistoPelaAna.invitedByMe());
         assertEquals(List.of("bia", "caio"), vistoPelaAna.partners().stream().map(p -> p.user().getUsername()).toList());
         assertNull(vistoPelaAna.partners().get(1).reviewId());
+
+        // a review da Ana vista por outra pessoa (ou sem login): o Caio só aparece depois de aceitar
+        logadoComo(bia);
+        assertEquals(List.of("bia"), new ReviewDTO(daAna).getTogether().partners().stream().map(p -> p.user().getUsername()).toList());
+        SecurityContextHolder.clearContext();
+        assertEquals(List.of("bia"), new ReviewDTO(daAna).getTogether().partners().stream().map(p -> p.user().getUsername()).toList());
 
         ReviewDTO.Together vistoPelaBia = new ReviewDTO(daBia.getInviteeReview()).getTogether();
         assertFalse(vistoPelaBia.invitedByMe());

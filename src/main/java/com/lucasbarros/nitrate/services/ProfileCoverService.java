@@ -58,7 +58,7 @@ public class ProfileCoverService {
 
         String titulo = detalhe.getTitle() == null || detalhe.getTitle().isBlank() ? "Filme " + tmdbId : detalhe.getTitle();
         MovieBackdropsDTO resultado = new MovieBackdropsDTO(tmdbId, titulo, SeriesSearchResultDTO.ano(detalhe.getReleaseDate()), caminhos);
-        cache.put(tmdbId, new CenasEmCache(resultado, Instant.now()));
+        CacheLimitado.guardar(cache, tmdbId, new CenasEmCache(resultado, Instant.now()));
         return resultado;
     }
 

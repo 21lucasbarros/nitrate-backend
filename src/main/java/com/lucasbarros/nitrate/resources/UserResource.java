@@ -130,7 +130,7 @@ public class UserResource {
         return accountService.trocarSenha(principal.getUser(), request, lembrar(authorization));
     }
 
-    /** devolve um token novo: o token guarda o e-mail, então os anteriores deixam de valer */
+    /** devolve um token novo: os anteriores, inclusive o desta requisição, deixam de valer */
     @PutMapping("/me/email")
     public AuthResponseDTO trocarEmail(@AuthenticationPrincipal CustomUserDetails principal,
                                        @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,

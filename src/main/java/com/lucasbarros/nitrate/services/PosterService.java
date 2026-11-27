@@ -67,7 +67,7 @@ public class PosterService {
             return emCache.posteres();
         }
         PostersDTO resultado = buscar.get();
-        cache.put(chave, new PosteresEmCache(resultado, Instant.now()));
+        CacheLimitado.guardar(cache, chave, new PosteresEmCache(resultado, Instant.now()));
         return resultado;
     }
 

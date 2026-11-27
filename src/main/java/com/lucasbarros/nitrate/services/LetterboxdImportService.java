@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -48,7 +50,9 @@ public class LetterboxdImportService {
             } catch (Exception e) {
                 // um filme com problema não derruba o lote
                 log.warn("Falha ao importar '{}' ({}): {}", item.name(), item.year(), e.getMessage());
-                resultados.add(new ItemResult(item.name(), item.year(), Status.ERROR, null, null, e.getMessage()));
+                // as mensagens de validação são nossas; o texto de outras exceções pode ter detalhes internos
+                String detalhe = e instanceof IllegalArgumentException ? e.getMessage() : "Não foi possível importar este filme.";
+                resultados.add(new ItemResult(item.name(), item.year(), Status.ERROR, null, null, detalhe));
             }
         }
         return resultados;
@@ -65,16 +69,20 @@ public class LetterboxdImportService {
         }
         Long movieId = movieService.obterOuImportarId(encontrado.getId());
 
+        // data no futuro deixaria a review no topo das recentes e dos destaques até lá: vira hoje
+        LocalDate registradoEm = item.loggedOn() != null && item.loggedOn().isAfter(LocalDate.now(ZoneOffset.UTC))
+                ? null : item.loggedOn();
+
         Status status;
         if (item.watchlist()) {
-            status = watchlistService.adicionarSeNaoAssistiu(user, movieId, item.loggedOn());
+            status = watchlistService.adicionarSeNaoAssistiu(user, movieId, registradoEm);
         } else {
             ReviewRequestDTO request = new ReviewRequestDTO();
             request.setRating(item.rating());
             request.setLiked(item.liked());
-            request.setWatchedOn(item.watchedOn() != null ? item.watchedOn() : item.loggedOn());
+            request.setWatchedOn(item.watchedOn() != null ? item.watchedOn() : registradoEm);
             request.setText(item.review());
-            boolean criada = reviewService.criarSeNaoExistir(user, movieId, request, item.loggedOn());
+            boolean criada = reviewService.criarSeNaoExistir(user, movieId, request, registradoEm);
             status = criada ? Status.CREATED : Status.ALREADY_EXISTS;
         }
         return new ItemResult(item.name(), item.year(), status, movieId, encontrado.getTitle(), null);

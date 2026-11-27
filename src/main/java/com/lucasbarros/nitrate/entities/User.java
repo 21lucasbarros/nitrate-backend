@@ -43,8 +43,12 @@ public class User implements Serializable {
     // quando a foto de perfil mudou pela última vez; nulo = sem foto (os bytes ficam em UserAvatar)
     private Instant avatarUpdatedAt;
 
-    // última troca de senha; tokens JWT emitidos antes disso deixam de valer (ver JwtService)
+    // última troca de senha
     private Instant passwordChangedAt;
+
+    // quando as sessões abertas foram encerradas (troca de senha, redefinição ou troca de e-mail);
+    // tokens JWT emitidos antes disso deixam de valer (ver JwtService)
+    private Instant sessionsRevokedAt;
 
     // quando aceitou os Termos e a Política de Privacidade (com a idade mínima); nulo = conta anterior ao aceite
     private Instant termsAcceptedAt;
@@ -107,6 +111,9 @@ public class User implements Serializable {
 
     public Instant getPasswordChangedAt() { return passwordChangedAt; }
     public void setPasswordChangedAt(Instant passwordChangedAt) { this.passwordChangedAt = passwordChangedAt; }
+
+    public Instant getSessionsRevokedAt() { return sessionsRevokedAt; }
+    public void setSessionsRevokedAt(Instant sessionsRevokedAt) { this.sessionsRevokedAt = sessionsRevokedAt; }
 
     public Instant getTermsAcceptedAt() { return termsAcceptedAt; }
     public void setTermsAcceptedAt(Instant termsAcceptedAt) { this.termsAcceptedAt = termsAcceptedAt; }

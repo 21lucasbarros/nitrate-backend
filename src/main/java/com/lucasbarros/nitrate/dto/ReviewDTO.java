@@ -2,6 +2,7 @@ package com.lucasbarros.nitrate.dto;
 
 import com.lucasbarros.nitrate.entities.Review;
 import com.lucasbarros.nitrate.entities.ReviewCollaboration;
+import com.lucasbarros.nitrate.security.UsuarioAtual;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -25,7 +26,8 @@ public class ReviewDTO {
     /**
      * Review em conjunto, vista do lado do dono desta review: `partners` são as outras pessoas da
      * sessão, com a review de cada uma (nula enquanto o convite está pendente). Quem convidou vê
-     * os convites pendentes; quem aceitou vê quem convidou e quem mais aceitou. `invitedBy` é quem
+     * os convites pendentes (só ele: para os outros, a pessoa só aparece depois de aceitar); quem
+     * aceitou vê quem convidou e quem mais aceitou. `invitedBy` é quem
      * convidou (nulo para ele mesmo) e `sharedText` = o texto desta review é o de `invitedBy`.
      * Convites recusados não aparecem.
      */
@@ -36,8 +38,11 @@ public class ReviewDTO {
             ReviewCollaboration recebido = review.getCollaboration();
             List<Partner> parceiros = new ArrayList<>();
             if (recebido == null) {
+                Long eu = UsuarioAtual.id();
+                boolean dono = eu != null && eu.equals(review.getUser().getId());
                 for (ReviewCollaboration c : review.getInvites()) {
-                    if (c.getStatus() != ReviewCollaboration.Status.DECLINED) parceiros.add(new Partner(c));
+                    if (c.getStatus() == ReviewCollaboration.Status.ACCEPTED
+                            || (dono && c.getStatus() == ReviewCollaboration.Status.PENDING)) parceiros.add(new Partner(c));
                 }
                 return parceiros.isEmpty() ? null : new Together(parceiros, true, null, false);
             }

@@ -2,12 +2,15 @@ package com.lucasbarros.nitrate.services;
 
 import com.lucasbarros.nitrate.dto.LoginRequestDTO;
 import com.lucasbarros.nitrate.dto.RegisterRequestDTO;
+import com.lucasbarros.nitrate.entities.RevokedToken;
 import com.lucasbarros.nitrate.entities.User;
+import com.lucasbarros.nitrate.repositories.RevokedTokenRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import com.lucasbarros.nitrate.security.JwtService;
 import com.lucasbarros.nitrate.security.RateLimiter;
 import com.lucasbarros.nitrate.services.exceptions.EmailJaCadastradoException;
 import com.lucasbarros.nitrate.services.exceptions.TooManyRequestsException;
+import io.jsonwebtoken.MalformedJwtException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -19,6 +22,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -29,7 +35,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// regras do cadastro e o limite de senhas erradas no login (sem banco)
+// regras do cadastro, o limite de senhas erradas no login e o logout (sem banco)
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
@@ -37,6 +43,7 @@ class AuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
     @Mock private AuthenticationManager authenticationManager;
+    @Mock private RevokedTokenRepository revokedTokenRepository;
     @Spy private RateLimiter rateLimiter = new RateLimiter();
     @InjectMocks private AuthService authService;
 
@@ -107,20 +114,67 @@ class AuthServiceTest {
                 () -> authService.registrar(cadastro("Ana", "ana", "ANA@x.com", "senha-boa-123")));
     }
 
+    private LoginRequestDTO login(String login) {
+        LoginRequestDTO r = new LoginRequestDTO();
+        r.setLogin(login);
+        r.setPassword("errada");
+        return r;
+    }
+
+    private User ana() {
+        User ana = new User("Ana", "ana", "ana@x.com", "hash");
+        ana.setId(7L);
+        return ana;
+    }
+
     @Test
-    void dezSenhasErradasBloqueiamAContaSemNemTentarDeNovo() {
+    void dezSenhasErradasDoMesmoIpBloqueiamOLoginDaContaPorEsseIp() {
         lenient().when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("x"));
-        LoginRequestDTO login = new LoginRequestDTO();
-        login.setLogin("Ana@x.com");
-        login.setPassword("errada");
+        lenient().when(userRepository.findFirstByEmailIgnoreCase(any())).thenReturn(Optional.empty());
+        lenient().when(userRepository.findFirstByEmailIgnoreCase("Ana@x.com")).thenReturn(Optional.of(ana()));
+        lenient().when(userRepository.findFirstByUsernameIgnoreCase("ana")).thenReturn(Optional.of(ana()));
 
         for (int i = 0; i < 10; i++) {
-            assertThrows(BadCredentialsException.class, () -> authService.login(login));
+            assertThrows(BadCredentialsException.class, () -> authService.login(login("Ana@x.com"), "1.1.1.1"));
         }
-        // a 11ª nem chega a conferir a senha (mesma conta, mesmo com outra caixa)
-        login.setLogin("ana@X.com");
-        assertThrows(TooManyRequestsException.class, () -> authService.login(login));
+        // a 11ª nem chega a conferir a senha, nem entrando pelo @ (é a mesma conta)
+        assertThrows(TooManyRequestsException.class, () -> authService.login(login("ana"), "1.1.1.1"));
         verify(authenticationManager, times(10)).authenticate(any());
-        verify(userRepository, never()).findFirstByEmailIgnoreCase(any());
+
+        // de outro IP a dona da conta ainda consegue tentar: errar de propósito não tranca a conta dos outros
+        assertThrows(BadCredentialsException.class, () -> authService.login(login("ana"), "2.2.2.2"));
+    }
+
+    @Test
+    void muitasSenhasErradasDeIpsDiferentesBloqueiamAConta() {
+        lenient().when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("x"));
+        when(userRepository.findFirstByEmailIgnoreCase("ana@x.com")).thenReturn(Optional.of(ana()));
+
+        for (int i = 0; i < 50; i++) {
+            String ip = "10.0.0." + i;
+            assertThrows(BadCredentialsException.class, () -> authService.login(login("ana@x.com"), ip));
+        }
+        assertThrows(TooManyRequestsException.class, () -> authService.login(login("ana@x.com"), "10.0.1.1"));
+    }
+
+    @Test
+    void logoutEncerraOToken() {
+        Instant expira = Instant.now().plusSeconds(3600);
+        when(jwtService.ler("abc")).thenReturn(new JwtService.Sessao(7L, "jti-1", Instant.now(), expira, false));
+
+        authService.sair("Bearer abc");
+
+        ArgumentCaptor<RevokedToken> salvo = ArgumentCaptor.forClass(RevokedToken.class);
+        verify(revokedTokenRepository).save(salvo.capture());
+        assertEquals("jti-1", salvo.getValue().getId());
+        assertEquals(expira, salvo.getValue().getExpiresAt());
+    }
+
+    @Test
+    void logoutSemTokenOuComTokenInvalidoNaoFazNada() {
+        when(jwtService.ler("lixo")).thenThrow(new MalformedJwtException("x"));
+        authService.sair(null);
+        authService.sair("Bearer lixo");
+        verify(revokedTokenRepository, never()).save(any());
     }
 }

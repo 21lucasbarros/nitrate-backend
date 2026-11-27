@@ -1,6 +1,7 @@
 package com.lucasbarros.nitrate.security;
 
 import com.lucasbarros.nitrate.entities.User;
+import com.lucasbarros.nitrate.repositories.RevokedTokenRepository;
 import com.lucasbarros.nitrate.repositories.UserRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -11,8 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -30,7 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private JwtService jwtService;
 
     @Autowired
-    private CustomUserDetailsService userDetailsService;
+    private RevokedTokenRepository revokedTokenRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -52,9 +51,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
-        String email;
+        JwtService.Sessao sessao;
         try {
-            email = jwtService.extrairEmail(token);
+            sessao = jwtService.ler(token);
         } catch (JwtException | IllegalArgumentException e) {
             // token expirado/inválido: segue como anônimo. rotas públicas continuam
             // funcionando e as protegidas respondem 401 pelo entry point
@@ -62,22 +61,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails;
-            try {
-                userDetails = userDetailsService.loadUserByUsername(email);
-            } catch (UsernameNotFoundException e) {
-                // token válido de uma conta que foi excluída: segue como anônimo
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            if (jwtService.tokenValido(token, userDetails)) {
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            // conta excluída, sessões encerradas depois do token ou logout: segue como anônimo
+            User user = userRepository.findById(sessao.userId()).orElse(null);
+            if (user != null && jwtService.valeParaConta(sessao, user) && !revokedTokenRepository.existsById(sessao.id())) {
+                CustomUserDetails userDetails = new CustomUserDetails(user);
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
-                marcarVisto(((CustomUserDetails) userDetails).getUser());
+                marcarVisto(user);
             }
         }
 

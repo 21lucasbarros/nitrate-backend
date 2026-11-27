@@ -3,6 +3,7 @@ package com.lucasbarros.nitrate.dto;
 import com.lucasbarros.nitrate.entities.ReviewCollaboration.Status;
 import com.lucasbarros.nitrate.entities.SeriesReview;
 import com.lucasbarros.nitrate.entities.SeriesReviewCollaboration;
+import com.lucasbarros.nitrate.security.UsuarioAtual;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -32,14 +33,16 @@ public record SeriesReviewDTO(
                 r.getWatchedOn(), r.getCreatedAt(), together(r));
     }
 
-    // como ReviewDTO.Together.de: quem convidou vê os convites pendentes; quem aceitou vê quem
+    // como ReviewDTO.Together.de: quem convidou vê os convites pendentes (só ele); quem aceitou vê quem
     // convidou e quem mais aceitou. Convites recusados não aparecem
     private static ReviewDTO.Together together(SeriesReview review) {
         SeriesReviewCollaboration recebido = review.getCollaboration();
         List<ReviewDTO.Partner> parceiros = new ArrayList<>();
         if (recebido == null) {
+            Long eu = UsuarioAtual.id();
+            boolean dono = eu != null && eu.equals(review.getUser().getId());
             for (SeriesReviewCollaboration c : review.getInvites()) {
-                if (c.getStatus() != Status.DECLINED) parceiros.add(partner(c));
+                if (c.getStatus() == Status.ACCEPTED || (dono && c.getStatus() == Status.PENDING)) parceiros.add(partner(c));
             }
             return parceiros.isEmpty() ? null : new ReviewDTO.Together(parceiros, true, null, false);
         }

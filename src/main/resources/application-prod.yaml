@@ -47,8 +47,7 @@ cors:
 
 admin:
   secret: ${CRON_SECRET}          # protege /admin/**; enviado pelas tarefas agendadas
-  emails: ${ADMIN_EMAILS:}        # contas que abrem o painel de admin no site, separadas por vírgula
-  usernames: ${ADMIN_USERNAMES:21lucasbarros}  # idem, pelo @
+  user-ids: ${ADMIN_USER_IDS:}    # ids das contas que abrem o painel de admin no site, separados por vírgula
 
 # e-mails (redefinição de senha) pelo Resend. EMAIL_FROM precisa ser de um domínio verificado
 # no Resend, ex.: "Nitrate <nao-responda@seudominio.com>"

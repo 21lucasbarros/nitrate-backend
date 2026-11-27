@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
@@ -37,7 +38,10 @@ import java.util.Iterator;
 public class AvatarService {
 
     private static final int LADO = 400; // o maior avatar do site tem 112px; 400 cobre telas 3x
-    private static final int LADO_MAX_ORIGINAL = 8000; // acima disso a decodificação gastaria memória demais
+    private static final int LADO_MAX_ORIGINAL = 8000; // acima disso a imagem é recusada
+    // imagens maiores são decodificadas já reduzidas (pulando pixels): uma de 8000 x 8000 inteira
+    // ocuparia uns 256 MB de memória, e algumas enviadas ao mesmo tempo derrubariam a API
+    private static final int LADO_MAX_DECODIFICADO = 1600;
     private static final float QUALIDADE = 0.85f;
 
     @Autowired private UserRepository userRepository;
@@ -79,7 +83,7 @@ public class AvatarService {
                 .orElseThrow(() -> new ResourceNotFoundException("Sem foto de perfil."));
     }
 
-    /** decodifica JPG/PNG/GIF/BMP, conferindo o tamanho antes de alocar os pixels */
+    /** decodifica JPG/PNG/GIF/BMP, conferindo o tamanho antes de alocar os pixels e reduzindo as grandes */
     private static BufferedImage ler(byte[] bytes) throws IOException {
         try (ImageInputStream entrada = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
             Iterator<ImageReader> leitores = ImageIO.getImageReaders(entrada);
@@ -90,7 +94,11 @@ public class AvatarService {
                 if (leitor.getWidth(0) > LADO_MAX_ORIGINAL || leitor.getHeight(0) > LADO_MAX_ORIGINAL) {
                     throw new IllegalArgumentException("Imagem grande demais. Use uma de até " + LADO_MAX_ORIGINAL + " px de lado.");
                 }
-                return leitor.read(0);
+                int maior = Math.max(leitor.getWidth(0), leitor.getHeight(0));
+                ImageReadParam parametros = leitor.getDefaultReadParam();
+                int passo = (maior + LADO_MAX_DECODIFICADO - 1) / LADO_MAX_DECODIFICADO;
+                if (passo > 1) parametros.setSourceSubsampling(passo, passo, 0, 0);
+                return leitor.read(0, parametros);
             } finally {
                 leitor.dispose();
             }

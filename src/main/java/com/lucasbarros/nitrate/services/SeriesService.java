@@ -142,7 +142,7 @@ public class SeriesService {
         if (emCache != null && emCache.valido(VALIDADE_LISTAS)) return emCache.valor();
         List<TmdbTvSummaryDTO> resultados = buscar.get();
         List<SeriesSearchResultDTO> dtos = comIdsLocais(resultados.subList(0, Math.min(LISTA_MAX, resultados.size())));
-        cacheListas.put(chave, new EmCache<>(dtos, Instant.now()));
+        CacheLimitado.guardar(cacheListas, chave, new EmCache<>(dtos, Instant.now()));
         return dtos;
     }
 
@@ -299,7 +299,7 @@ public class SeriesService {
                 proximo == null ? null : new SeriesDetailsDTO.NextEpisode(proximo.getName(), proximo.getAirDate(),
                         proximo.getSeasonNumber(), proximo.getEpisodeNumber()),
                 elenco);
-        cacheDetalhes.put(serie.getTmdbId(), new EmCache<>(resultado, Instant.now()));
+        CacheLimitado.guardar(cacheDetalhes, serie.getTmdbId(), new EmCache<>(resultado, Instant.now()));
         return resultado;
     }
 
@@ -323,7 +323,7 @@ public class SeriesService {
                 .toList();
         SeasonDTO resultado = new SeasonDTO(numero, t.getName(), vazioParaNulo(t.getOverview()), t.getAirDate(),
                 t.getPosterPath(), episodios);
-        cacheTemporadas.put(chave, new EmCache<>(resultado, Instant.now()));
+        CacheLimitado.guardar(cacheTemporadas, chave, new EmCache<>(resultado, Instant.now()));
         return resultado;
     }
 
@@ -337,7 +337,7 @@ public class SeriesService {
         String principal = detalhes(id).backdropPath();
         List<String> caminhos = ProfileCoverService.ordenarCenas(tmdbClient.buscarImagensSerie(serie.getTmdbId()), principal);
         MovieBackdropsDTO resultado = new MovieBackdropsDTO(serie.getTmdbId(), serie.getName(), serie.getFirstAirYear(), caminhos);
-        cacheCenas.put(serie.getTmdbId(), new EmCache<>(resultado, Instant.now()));
+        CacheLimitado.guardar(cacheCenas, serie.getTmdbId(), new EmCache<>(resultado, Instant.now()));
         return resultado;
     }
 
@@ -355,7 +355,7 @@ public class SeriesService {
                         MovieService.provedores(MovieService.concat(brasil.getFree(), brasil.getAds())),
                         MovieService.provedores(brasil.getRent()),
                         MovieService.provedores(brasil.getBuy()));
-        cacheProvedores.put(serie.getTmdbId(), new EmCache<>(resultado, Instant.now()));
+        CacheLimitado.guardar(cacheProvedores, serie.getTmdbId(), new EmCache<>(resultado, Instant.now()));
         return resultado;
     }
 

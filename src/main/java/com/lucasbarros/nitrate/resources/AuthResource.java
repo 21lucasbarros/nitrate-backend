@@ -6,9 +6,12 @@ import com.lucasbarros.nitrate.dto.LoginRequestDTO;
 import com.lucasbarros.nitrate.dto.RegisterRequestDTO;
 import com.lucasbarros.nitrate.dto.ResetPasswordRequestDTO;
 import com.lucasbarros.nitrate.dto.UsernameAvailabilityDTO;
+import com.lucasbarros.nitrate.security.ClientIp;
 import com.lucasbarros.nitrate.services.AuthService;
 import com.lucasbarros.nitrate.services.PasswordResetService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,8 +31,15 @@ public class AuthResource {
     }
 
     @PostMapping("/login")
-    public AuthResponseDTO login(@RequestBody LoginRequestDTO request) {
-        return authService.login(request);
+    public AuthResponseDTO login(@RequestBody LoginRequestDTO request, HttpServletRequest http) {
+        return authService.login(request, ClientIp.de(http));
+    }
+
+    /** encerra o token desta requisição; sempre 204, mesmo sem token ou com um já vencido */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> sair(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        authService.sair(authorization);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/check-username")
