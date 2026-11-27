@@ -106,7 +106,7 @@ public class AuthService {
                 .or(() -> userRepository.findFirstByUsernameIgnoreCase(login))
                 .orElseThrow();
 
-        String token = jwtService.gerarToken(new CustomUserDetails(user));
+        String token = jwtService.gerarToken(new CustomUserDetails(user), Boolean.TRUE.equals(request.getRememberMe()));
         return new AuthResponseDTO(token, user.getName(), user.getUsername(), user.getEmail());
     }
 

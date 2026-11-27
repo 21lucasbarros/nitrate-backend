@@ -32,6 +32,7 @@ import com.lucasbarros.nitrate.dto.UserProfileDTO;
 import com.lucasbarros.nitrate.dto.UserSummaryDTO;
 import com.lucasbarros.nitrate.dto.WatchlistItemDTO;
 import com.lucasbarros.nitrate.security.CustomUserDetails;
+import com.lucasbarros.nitrate.security.JwtService;
 import com.lucasbarros.nitrate.services.AccountService;
 import com.lucasbarros.nitrate.services.AchievementService;
 import com.lucasbarros.nitrate.services.AvatarService;
@@ -48,6 +49,7 @@ import com.lucasbarros.nitrate.services.SocialService;
 import com.lucasbarros.nitrate.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -106,6 +108,9 @@ public class UserResource {
     @Autowired
     private AchievementService achievementService;
 
+    @Autowired
+    private JwtService jwtService;
+
     @GetMapping("/me")
     public UserProfileDTO me(@AuthenticationPrincipal CustomUserDetails principal) {
         return userService.perfil(principal.getUser());
@@ -120,15 +125,22 @@ public class UserResource {
     /** devolve um token novo: os anteriores, inclusive o desta requisição, deixam de valer */
     @PutMapping("/me/password")
     public AuthResponseDTO trocarSenha(@AuthenticationPrincipal CustomUserDetails principal,
+                                       @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                        @RequestBody PasswordChangeDTO request) {
-        return accountService.trocarSenha(principal.getUser(), request);
+        return accountService.trocarSenha(principal.getUser(), request, lembrar(authorization));
     }
 
     /** devolve um token novo: o token guarda o e-mail, então os anteriores deixam de valer */
     @PutMapping("/me/email")
     public AuthResponseDTO trocarEmail(@AuthenticationPrincipal CustomUserDetails principal,
+                                       @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                        @RequestBody EmailChangeDTO request) {
-        return accountService.trocarEmail(principal.getUser(), request);
+        return accountService.trocarEmail(principal.getUser(), request, lembrar(authorization));
+    }
+
+    /** o token novo da troca de senha ou de e-mail dura o mesmo que o desta requisição */
+    private boolean lembrar(String authorization) {
+        return authorization.startsWith("Bearer ") && jwtService.lembrar(authorization.substring(7));
     }
 
     // fundo do topo do perfil: uma cena de filme (as opções vêm de /movies/tmdb/{tmdbId}/backdrops)

@@ -146,10 +146,10 @@ public class AccountService {
 
     /**
      * Troca a senha sabendo a atual. Derruba as sessões abertas nos outros aparelhos e devolve um
-     * token novo para este continuar conectado.
+     * token novo para este continuar conectado, com a mesma duração do atual (`lembrar`).
      */
     @Transactional
-    public AuthResponseDTO trocarSenha(User user, PasswordChangeDTO dados) {
+    public AuthResponseDTO trocarSenha(User user, PasswordChangeDTO dados, boolean lembrar) {
         if (!rateLimiter.tentar("troca-senha:" + user.getId(), TROCAS_SENHA_MAX, JANELA_TROCAS_SENHA)) {
             throw new TooManyRequestsException("Muitas tentativas de trocar a senha. Espere alguns minutos e tente de novo.");
         }
@@ -170,17 +170,18 @@ public class AccountService {
         emailService.enviarEmSegundoPlano(salvo.getEmail(), "Sua senha do Nitrate foi alterada",
                 avisoSenhaAlteradaHtml(salvo.getName()), avisoSenhaAlteradaTexto(salvo.getName()));
 
-        String token = jwtService.gerarToken(new CustomUserDetails(salvo));
+        String token = jwtService.gerarToken(new CustomUserDetails(salvo), lembrar);
         return new AuthResponseDTO(token, salvo.getName(), salvo.getUsername(), salvo.getEmail());
     }
 
     /**
      * Troca o e-mail sabendo a senha. O token guarda o e-mail, então as sessões abertas nos outros
      * aparelhos caem sozinhas; devolve um token novo para este continuar conectado. O e-mail antigo
-     * recebe um aviso, a chance de recuperar a conta se não foi a própria pessoa.
+     * recebe um aviso, a chance de recuperar a conta se não foi a própria pessoa. O token novo tem a
+     * mesma duração do atual (`lembrar`).
      */
     @Transactional
-    public AuthResponseDTO trocarEmail(User user, EmailChangeDTO dados) {
+    public AuthResponseDTO trocarEmail(User user, EmailChangeDTO dados, boolean lembrar) {
         if (!rateLimiter.tentar("troca-email:" + user.getId(), TROCAS_EMAIL_MAX, JANELA_TROCAS_EMAIL)) {
             throw new TooManyRequestsException("Muitas tentativas de trocar o e-mail. Espere alguns minutos e tente de novo.");
         }
@@ -206,7 +207,7 @@ public class AccountService {
         emailService.enviarEmSegundoPlano(antigo, "O e-mail da sua conta no Nitrate foi alterado",
                 avisoEmailAlteradoHtml(salvo.getName(), email), avisoEmailAlteradoTexto(salvo.getName(), email));
 
-        String token = jwtService.gerarToken(new CustomUserDetails(salvo));
+        String token = jwtService.gerarToken(new CustomUserDetails(salvo), lembrar);
         return new AuthResponseDTO(token, salvo.getName(), salvo.getUsername(), salvo.getEmail());
     }
 

@@ -125,12 +125,13 @@ Faz login e gera um novo token JWT. Também não precisa de autenticação.
 curl -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "lucas@example.com",
-    "password": "minha-senha"
+    "login": "lucas@example.com",
+    "password": "minha-senha",
+    "rememberMe": true
   }'
 ```
 
-A resposta possui o mesmo formato do cadastro.
+A resposta possui o mesmo formato do cadastro. `login` aceita o e-mail ou o nome de usuário. Com `rememberMe: true` ("Lembrar de mim"), o token vale 30 dias (`JWT_REMEMBER_EXPIRATION_MS`), e não 24h; trocar a senha ou o e-mail devolve um token com a mesma duração do atual.
 
 ### `POST /auth/forgot-password`
 
@@ -320,6 +321,7 @@ O Coolify constrói o `Dockerfile` da raiz. A imagem usa o perfil `prod` (`appli
 | `CRON_SECRET`          | segredo do `/admin/**`, enviado pelas tarefas agendadas                     |
 | `CORS_ALLOWED_ORIGINS` | domínio(s) do front, ex.: `https://nitrate.com.br`                          |
 | `JWT_EXPIRATION_MS`    | opcional, padrão `86400000` (24h)                                           |
+| `JWT_REMEMBER_EXPIRATION_MS` | opcional, padrão `2592000000` (30 dias), com "Lembrar de mim" no login      |
 | `RESEND_API_KEY`       | chave do [Resend](https://resend.com), para os e-mails de redefinir a senha |
 | `EMAIL_FROM`           | remetente de um domínio verificado no Resend, ex.: `Nitrate <nao-responda@seudominio.com>` |
 | `FRONTEND_URL`         | endereço do front, usado no link do e-mail, ex.: `https://nitrate.com.br`   |

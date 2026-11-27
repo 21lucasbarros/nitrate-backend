@@ -97,9 +97,9 @@ class AccountServiceTest {
         when(passwordEncoder.matches("senha-atual", "hash-atual")).thenReturn(true);
         when(passwordEncoder.matches("senha-nova-123", "hash-atual")).thenReturn(false);
         when(passwordEncoder.encode("senha-nova-123")).thenReturn("hash-novo");
-        when(jwtService.gerarToken(any())).thenReturn("token-novo");
+        when(jwtService.gerarToken(any(), eq(false))).thenReturn("token-novo");
 
-        AuthResponseDTO resposta = accountService.trocarSenha(ana, new PasswordChangeDTO("senha-atual", "senha-nova-123"));
+        AuthResponseDTO resposta = accountService.trocarSenha(ana, new PasswordChangeDTO("senha-atual", "senha-nova-123"), false);
 
         assertEquals("token-novo", resposta.getToken());
         assertEquals("hash-novo", ana.getPasswordHash());
@@ -112,7 +112,7 @@ class AccountServiceTest {
     void senhaAtualErradaNaoTrocaNada() {
         when(passwordEncoder.matches("errada", "hash-atual")).thenReturn(false);
         assertThrows(ForbiddenException.class,
-                () -> accountService.trocarSenha(ana, new PasswordChangeDTO("errada", "senha-nova-123")));
+                () -> accountService.trocarSenha(ana, new PasswordChangeDTO("errada", "senha-nova-123"), false));
         assertEquals("hash-atual", ana.getPasswordHash());
         verify(userRepository, never()).save(any());
     }
@@ -121,10 +121,10 @@ class AccountServiceTest {
     void novaSenhaCurtaOuIgualAAtualEhRecusada() {
         when(passwordEncoder.matches("senha-atual", "hash-atual")).thenReturn(true);
         IllegalArgumentException curta = assertThrows(IllegalArgumentException.class,
-                () -> accountService.trocarSenha(ana, new PasswordChangeDTO("senha-atual", "curta")));
+                () -> accountService.trocarSenha(ana, new PasswordChangeDTO("senha-atual", "curta"), false));
         assertEquals("A senha precisa ter pelo menos 8 caracteres.", curta.getMessage());
         IllegalArgumentException igual = assertThrows(IllegalArgumentException.class,
-                () -> accountService.trocarSenha(ana, new PasswordChangeDTO("senha-atual", "senha-atual")));
+                () -> accountService.trocarSenha(ana, new PasswordChangeDTO("senha-atual", "senha-atual"), false));
         assertEquals("A nova senha precisa ser diferente da atual.", igual.getMessage());
         verify(userRepository, never()).save(any());
     }
@@ -134,9 +134,9 @@ class AccountServiceTest {
         when(passwordEncoder.matches("errada", "hash-atual")).thenReturn(false);
         for (int i = 0; i < 10; i++) {
             assertThrows(ForbiddenException.class,
-                    () -> accountService.trocarSenha(ana, new PasswordChangeDTO("errada", "senha-nova-123")));
+                    () -> accountService.trocarSenha(ana, new PasswordChangeDTO("errada", "senha-nova-123"), false));
         }
         assertThrows(TooManyRequestsException.class,
-                () -> accountService.trocarSenha(ana, new PasswordChangeDTO("errada", "senha-nova-123")));
+                () -> accountService.trocarSenha(ana, new PasswordChangeDTO("errada", "senha-nova-123"), false));
     }
 }

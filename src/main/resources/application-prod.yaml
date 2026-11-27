@@ -40,6 +40,7 @@ tmdb:
 jwt:
   secret: ${JWT_SECRET}           # mínimo de 32 caracteres (HMAC-SHA256)
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  remember-expiration-ms: ${JWT_REMEMBER_EXPIRATION_MS:2592000000}  # "Lembrar de mim": 30 dias
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}   # ex.: https://nitrate.com.br

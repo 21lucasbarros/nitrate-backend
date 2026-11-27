@@ -20,20 +20,48 @@ public class JwtService {
     @Value("${jwt.expiration-ms}")
     private long expirationMs;
 
+    // "Lembrar de mim" no login: token longo, de 30 dias por padrão
+    @Value("${jwt.remember-expiration-ms:2592000000}")
+    private long rememberExpirationMs;
+
+    private static final String CLAIM_LEMBRAR = "lembrar";
+
     private SecretKey chave() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
     public String gerarToken(UserDetails userDetails) {
-        Date agora = new Date();
-        Date expiracao = new Date(agora.getTime() + expirationMs);
+        return gerarToken(userDetails, false);
+    }
 
-        return Jwts.builder()
+    /** com `lembrar`, o token dura rememberExpirationMs e leva a marca para ser renovado igual */
+    public String gerarToken(UserDetails userDetails, boolean lembrar) {
+        Date agora = new Date();
+        Date expiracao = new Date(agora.getTime() + (lembrar ? rememberExpirationMs : expirationMs));
+
+        var builder = Jwts.builder()
                 .subject(userDetails.getUsername()) // aqui "username" é o email
                 .issuedAt(agora)
-                .expiration(expiracao)
-                .signWith(chave())
-                .compact();
+                .expiration(expiracao);
+        if (lembrar) builder.claim(CLAIM_LEMBRAR, true);
+        return builder.signWith(chave()).compact();
+    }
+
+    /**
+     * Se o token foi emitido com "Lembrar de mim". Usado ao trocar senha ou e-mail, que devolvem
+     * um token novo com a mesma duração do atual. Token inválido conta como não.
+     */
+    public boolean lembrar(String token) {
+        try {
+            return Boolean.TRUE.equals(Jwts.parser()
+                    .verifyWith(chave())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .get(CLAIM_LEMBRAR, Boolean.class));
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     public String extrairEmail(String token) {
